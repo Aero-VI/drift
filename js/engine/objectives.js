@@ -169,6 +169,8 @@ export class ObjectivesSystem {
     }
 
     checkMilestones(stats) {
+        if (stats) this._lastStats = stats;
+        stats = stats || this._lastStats;
         if (!stats) return;
 
         const changed = [];

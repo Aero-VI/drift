@@ -192,8 +192,13 @@ body.ui-open {
 #controls-hint {
     font-size: 11px;
     letter-spacing: 2px;
-    color: rgba(235, 240, 255, 0.8);
+    color: rgba(235, 240, 255, 0.85);
     text-transform: uppercase;
+    background: rgba(5, 12, 35, 0.88);
+    padding: 10px 18px;
+    border: 1px solid rgba(60, 130, 220, 0.25);
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
 }
 
 #controls-hint span {

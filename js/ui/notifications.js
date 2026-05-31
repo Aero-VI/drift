@@ -47,6 +47,12 @@ export class NotificationSystem {
                 border-left-color: rgba(100, 255, 180, 0.6);
                 color: rgba(100, 255, 180, 0.7);
             }
+            .notification.discovery {
+                border-left-color: rgba(255, 200, 50, 0.8);
+                color: rgba(255, 220, 100, 0.9);
+                background: rgba(20, 15, 0, 0.9);
+                border-left-width: 3px;
+            }
             .notification.fade-out {
                 opacity: 0;
             }
