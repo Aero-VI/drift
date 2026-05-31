@@ -20,6 +20,7 @@ export class UpgradesUI {
             </div>
             <div id="credits-display"></div>
             <div id="upgrades-list"></div>
+            <div id="milestones-section"></div>
             <div id="completion-display"></div>
         `;
         document.getElementById('ui-overlay').appendChild(this.container);
@@ -31,19 +32,21 @@ export class UpgradesUI {
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                width: 420px;
-                max-height: 70vh;
-                background: rgba(0, 5, 15, 0.95);
-                border: 1px solid rgba(100, 180, 255, 0.3);
+                width: 440px;
+                max-height: 75vh;
+                background: rgba(2, 8, 24, 0.97);
+                border: 1px solid rgba(80, 160, 240, 0.35);
                 padding: 20px;
                 pointer-events: auto;
                 overflow-y: auto;
                 cursor: default;
+                border-radius: 4px;
+                box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
             }
             #credits-display {
                 font-size: 14px;
                 letter-spacing: 3px;
-                color: rgba(255, 220, 100, 0.8);
+                color: rgba(255, 220, 100, 0.85);
                 margin-bottom: 15px;
                 padding-bottom: 10px;
                 border-bottom: 1px solid rgba(100, 180, 255, 0.1);
@@ -55,6 +58,7 @@ export class UpgradesUI {
                 background: rgba(0, 10, 30, 0.5);
                 cursor: pointer;
                 transition: all 0.2s ease;
+                border-radius: 3px;
             }
             .upgrade-item:hover:not(.purchased):not(.locked) {
                 border-color: rgba(100, 180, 255, 0.4);
@@ -75,26 +79,53 @@ export class UpgradesUI {
             }
             .upgrade-name {
                 font-size: 13px;
-                color: rgba(100, 180, 255, 0.9);
+                color: rgba(140, 210, 255, 0.95);
                 letter-spacing: 2px;
                 margin-bottom: 4px;
             }
             .upgrade-desc {
                 font-size: 10px;
-                color: rgba(255, 255, 255, 0.4);
+                color: rgba(255, 255, 255, 0.5);
                 letter-spacing: 1px;
                 margin-bottom: 4px;
             }
             .upgrade-cost {
                 font-size: 11px;
-                color: rgba(255, 220, 100, 0.7);
+                color: rgba(255, 220, 100, 0.75);
                 letter-spacing: 1px;
             }
             .upgrade-status {
                 font-size: 10px;
-                color: rgba(100, 255, 150, 0.7);
+                color: rgba(100, 255, 150, 0.75);
                 letter-spacing: 2px;
                 float: right;
+            }
+            #milestones-section {
+                margin-top: 15px;
+                padding-top: 10px;
+                border-top: 1px solid rgba(100, 180, 255, 0.1);
+            }
+            .milestones-header {
+                font-size: 11px;
+                letter-spacing: 3px;
+                color: rgba(100, 180, 255, 0.6);
+                margin-bottom: 8px;
+            }
+            .milestone-item {
+                font-size: 10px;
+                letter-spacing: 1px;
+                padding: 3px 0;
+                color: rgba(255, 255, 255, 0.35);
+            }
+            .milestone-item.achieved {
+                color: rgba(255, 220, 100, 0.8);
+            }
+            .milestone-item.achieved::before {
+                content: '✦ ';
+            }
+            .milestone-item:not(.achieved)::before {
+                content: '○ ';
+                color: rgba(255, 255, 255, 0.2);
             }
             #completion-display {
                 margin-top: 15px;
@@ -102,7 +133,7 @@ export class UpgradesUI {
                 border-top: 1px solid rgba(100, 180, 255, 0.1);
                 font-size: 11px;
                 letter-spacing: 2px;
-                color: rgba(100, 180, 255, 0.5);
+                color: rgba(140, 200, 255, 0.6);
             }
             .completion-bar {
                 width: 100%;
@@ -110,11 +141,13 @@ export class UpgradesUI {
                 background: rgba(255, 255, 255, 0.05);
                 border: 1px solid rgba(100, 180, 255, 0.2);
                 margin-top: 8px;
+                border-radius: 3px;
             }
             .completion-fill {
                 height: 100%;
                 background: linear-gradient(90deg, rgba(100, 180, 255, 0.6), rgba(180, 100, 255, 0.8));
                 transition: width 0.5s ease;
+                border-radius: 2px;
             }
         `;
         document.head.appendChild(style);
@@ -187,6 +220,34 @@ export class UpgradesUI {
 
             list.appendChild(div);
         }
+
+        // Milestones section
+        const milestonesDiv = document.getElementById('milestones-section');
+        const milestoneNames = {
+            firstDiscovery: 'First Discovery',
+            fiveDiscoveries: '5 Systems Discovered',
+            tenDiscoveries: '10 Systems (Explorer)',
+            twentyFiveDiscoveries: '25 Systems (Pathfinder)',
+            fiftyDiscoveries: '50 Systems (Cartographer)',
+            hundredDiscoveries: '100 Systems (Master Explorer)',
+            firstWarp: 'First Warp Jump',
+            tenWarps: '10 Warp Jumps (Veteran)',
+            firstAnomaly: 'First Anomaly',
+            fiveAnomalies: '5 Anomalies (Hunter)',
+            firstLanding: 'First Planet Landing',
+            tenLandings: '10 Landings (Frequent Lander)',
+            firstSample: 'First Sample Collected',
+            maxSpeed: 'Speed Demon (5000 u/s)',
+            longDistance: 'Long Haul (1M units)',
+            originFound: '★ Origin System Found',
+        };
+
+        let milestonesHTML = '<div class="milestones-header">MILESTONES</div>';
+        for (const [key, name] of Object.entries(milestoneNames)) {
+            const achieved = this.objectives.milestones[key];
+            milestonesHTML += `<div class="milestone-item ${achieved ? 'achieved' : ''}">${name}</div>`;
+        }
+        milestonesDiv.innerHTML = milestonesHTML;
 
         // Completion display
         const completion = document.getElementById('completion-display');

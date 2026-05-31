@@ -11,9 +11,14 @@ export class HUD {
         this.discoveryPopup = document.getElementById('discovery-popup');
         this.discoveryName = document.getElementById('discovery-name');
         this.discoveryTimeout = null;
+
+        // Create credits display
+        this.creditsDisplay = document.createElement('div');
+        this.creditsDisplay.id = 'credits-hud';
+        document.getElementById('ui-overlay').appendChild(this.creditsDisplay);
     }
 
-    update(player, sector, nearestSystem) {
+    update(player, sector, nearestSystem, objectives) {
         // Speed
         this.speedValue.textContent = Math.floor(player.speed);
 
@@ -54,6 +59,11 @@ export class HUD {
         else if (angle > -112.5 && angle <= -67.5) compass = 'W';
         else if (angle > -67.5 && angle <= -22.5) compass = 'NW';
         this.compassDir.textContent = compass;
+
+        // Credits
+        if (objectives) {
+            this.creditsDisplay.textContent = `✦ ${objectives.credits}`;
+        }
 
         // Crosshair color
         if (player.boosting) {

@@ -25,27 +25,35 @@ export class NotificationSystem {
                 z-index: 20;
             }
             .notification {
-                padding: 8px 16px;
-                background: rgba(0, 5, 15, 0.85);
+                padding: 10px 18px;
+                background: rgba(2, 8, 24, 0.9);
                 border-left: 2px solid rgba(100, 180, 255, 0.6);
                 font-size: 11px;
                 letter-spacing: 2px;
-                color: rgba(255, 255, 255, 0.6);
+                color: rgba(230, 240, 255, 0.75);
                 animation: notif-in 0.3s ease;
                 transition: opacity 0.5s ease;
-                max-width: 300px;
+                max-width: 320px;
+                border-radius: 2px;
             }
             .notification.warning {
-                border-left-color: rgba(255, 200, 50, 0.6);
-                color: rgba(255, 200, 50, 0.7);
+                border-left-color: rgba(255, 200, 50, 0.7);
+                color: rgba(255, 220, 100, 0.85);
             }
             .notification.error {
-                border-left-color: rgba(255, 80, 80, 0.6);
-                color: rgba(255, 80, 80, 0.7);
+                border-left-color: rgba(255, 80, 80, 0.7);
+                color: rgba(255, 100, 100, 0.85);
             }
             .notification.success {
-                border-left-color: rgba(100, 255, 180, 0.6);
-                color: rgba(100, 255, 180, 0.7);
+                border-left-color: rgba(100, 255, 180, 0.7);
+                color: rgba(130, 255, 200, 0.85);
+            }
+            .notification.discovery {
+                border-left-color: rgba(255, 200, 50, 0.8);
+                color: rgba(255, 230, 150, 0.9);
+                background: rgba(10, 8, 2, 0.92);
+                border-left-width: 3px;
+                font-weight: bold;
             }
             .notification.discovery {
                 border-left-color: rgba(255, 200, 50, 0.8);

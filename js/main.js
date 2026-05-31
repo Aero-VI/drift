@@ -86,7 +86,6 @@ class Game {
             this.objectives = new ObjectivesSystem();
             this.objectives.setNotifications(this.notifications);
             this.landing = new LandingSystem(this.renderer.scene, this.camera, this.renderer);
-            this.landing.onLaunch = () => this.doLaunch();
             this.upgradesUI = new UpgradesUI();
             this.saveSystem = new SaveSystem();
             this.setupInteractions();
@@ -98,7 +97,8 @@ class Game {
             const saveData = this.saveSystem.load();
             if (saveData) {
                 this.saveSystem.restore(this, saveData);
-                loadingStatus.textContent = 'Save restored. Click to enter.';
+                const timeSince = this.formatTimeSinceSave(saveData.timestamp);
+                loadingStatus.textContent = `Save restored (${timeSince}). Click to enter.`;
             } else {
                 loadingStatus.textContent = 'Ready. Click to enter.';
             }
@@ -145,6 +145,14 @@ class Game {
             loadingBar.style.width = '100%';
             loadingBar.style.background = 'rgba(255, 50, 50, 0.8)';
         }
+    }
+
+    formatTimeSinceSave(timestamp) {
+        const elapsed = Math.floor((Date.now() - timestamp) / 1000);
+        if (elapsed < 60) return `${elapsed}s ago`;
+        if (elapsed < 3600) return `${Math.floor(elapsed / 60)}m ago`;
+        if (elapsed < 86400) return `${Math.floor(elapsed / 3600)}h ago`;
+        return `${Math.floor(elapsed / 86400)}d ago`;
     }
 
     setupInteractions() {
@@ -321,7 +329,7 @@ class Game {
         const nearbySystems = this.systemManager.scanNearby(this.player.position, 5000);
         const nearestSystem = this.systemManager.getNearestSystem(this.player.position);
 
-        this.hud.update(this.player, sector, nearestSystem);
+        this.hud.update(this.player, sector, nearestSystem, this.objectives);
         this.minimap.update(this.player.position, nearbySystems, this.camera.getDirection());
 
         // Keys
@@ -432,6 +440,11 @@ class Game {
                 this.camera.euler.x = restoreData.euler.x;
                 this.camera.euler.y = restoreData.euler.y;
                 this.camera.camera.quaternion.setFromEuler(this.camera.euler);
+            }
+
+            // Award credits for samples collected
+            if (restoreData.samplesCollected > 0) {
+                this.objectives.onSamplesCollected(restoreData.samplesCollected);
             }
 
             this.notifications.show('LAUNCH SUCCESSFUL', 'success', 2000);

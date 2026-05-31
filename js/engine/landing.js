@@ -17,6 +17,7 @@ export class LandingSystem {
         this.surfaceObjects = [];
         this.surfaceLights = [];
         this.skybox = null;
+        this.collectibles = [];
 
         // Walking state
         this.walkPosition = new THREE.Vector3(0, 2, 0);
@@ -31,6 +32,10 @@ export class LandingSystem {
         this.savedSpacePosition = null;
         this.savedCameraEuler = null;
 
+        // Collection stats for this landing
+        this.samplesCollected = 0;
+        this.totalSamples = 0;
+
         // UI
         this.launchButton = null;
         this.surfaceHUD = null;
@@ -44,8 +49,8 @@ export class LandingSystem {
         this.launchButton.className = 'hidden';
         this.launchButton.innerHTML = `
             <button id="launch-btn">
-                <span class="launch-icon">&#9650;</span>
-                <span>LAUNCH TO ORBIT</span>
+                <span class="launch-icon">▲</span>
+                <span>LAUNCH TO ORBIT [G]</span>
             </button>
         `;
         document.getElementById('ui-overlay').appendChild(this.launchButton);
@@ -58,7 +63,7 @@ export class LandingSystem {
             <div class="surface-info">
                 <span id="surface-planet-name">---</span>
                 <span id="surface-planet-type">---</span>
-                <span id="surface-controls">WASD move | SHIFT sprint | SPACE jump | G launch</span>
+                <span id="surface-samples">---</span>
             </div>
         `;
         document.getElementById('ui-overlay').appendChild(this.surfaceHUD);
@@ -69,6 +74,13 @@ export class LandingSystem {
         this.landPrompt.className = 'hidden';
         this.landPrompt.innerHTML = `<span>Press <b>G</b> to land</span>`;
         document.getElementById('ui-overlay').appendChild(this.landPrompt);
+
+        // Collect prompt
+        this.collectPrompt = document.createElement('div');
+        this.collectPrompt.id = 'collect-prompt';
+        this.collectPrompt.className = 'hidden';
+        this.collectPrompt.innerHTML = `<span>Press <b>E</b> to collect sample</span>`;
+        document.getElementById('ui-overlay').appendChild(this.collectPrompt);
 
         // Add styles
         const style = document.createElement('style');
@@ -82,11 +94,11 @@ export class LandingSystem {
                 z-index: 20;
             }
             #launch-btn {
-                background: rgba(10, 30, 60, 0.9);
+                background: rgba(5, 15, 40, 0.92);
                 border: 1px solid rgba(100, 180, 255, 0.5);
-                color: rgba(200, 230, 255, 0.9);
+                color: rgba(220, 240, 255, 0.9);
                 font-family: 'Courier New', monospace;
-                font-size: 14px;
+                font-size: 13px;
                 padding: 12px 28px;
                 cursor: pointer;
                 letter-spacing: 3px;
@@ -95,9 +107,10 @@ export class LandingSystem {
                 align-items: center;
                 gap: 10px;
                 transition: all 0.2s ease;
+                border-radius: 4px;
             }
             #launch-btn:hover {
-                background: rgba(20, 50, 100, 0.95);
+                background: rgba(15, 35, 70, 0.95);
                 border-color: rgba(100, 180, 255, 0.8);
                 box-shadow: 0 0 20px rgba(100, 180, 255, 0.3);
             }
@@ -123,19 +136,20 @@ export class LandingSystem {
             #surface-planet-name {
                 font-size: 16px;
                 letter-spacing: 4px;
-                color: rgba(100, 180, 255, 0.8);
+                color: rgba(140, 210, 255, 0.9);
                 text-transform: uppercase;
+                text-shadow: 0 0 10px rgba(100, 180, 255, 0.3);
             }
             #surface-planet-type {
                 font-size: 11px;
                 letter-spacing: 2px;
-                color: rgba(255, 255, 255, 0.4);
+                color: rgba(255, 255, 255, 0.5);
             }
-            #surface-controls {
-                font-size: 10px;
+            #surface-samples {
+                font-size: 11px;
                 letter-spacing: 2px;
-                color: rgba(200, 220, 245, 0.5);
-                margin-top: 8px;
+                color: rgba(255, 220, 100, 0.7);
+                margin-top: 4px;
             }
             #land-prompt {
                 position: absolute;
@@ -144,10 +158,11 @@ export class LandingSystem {
                 transform: translateX(-50%);
                 font-size: 13px;
                 letter-spacing: 2px;
-                color: rgba(100, 180, 255, 0.7);
-                background: rgba(0, 10, 30, 0.8);
+                color: rgba(150, 210, 255, 0.85);
+                background: rgba(2, 8, 24, 0.85);
                 padding: 8px 20px;
-                border: 1px solid rgba(100, 180, 255, 0.3);
+                border: 1px solid rgba(100, 180, 255, 0.35);
+                border-radius: 4px;
                 pointer-events: none;
                 animation: prompt-fade 2s infinite;
             }
@@ -155,15 +170,29 @@ export class LandingSystem {
                 0%, 100% { opacity: 0.7; }
                 50% { opacity: 1; }
             }
-            #land-prompt b {
-                color: rgba(150, 210, 255, 1);
+            #land-prompt b, #collect-prompt b {
+                color: rgba(180, 225, 255, 1);
+            }
+            #collect-prompt {
+                position: absolute;
+                bottom: 160px;
+                left: 50%;
+                transform: translateX(-50%);
+                font-size: 12px;
+                letter-spacing: 2px;
+                color: rgba(255, 220, 100, 0.85);
+                background: rgba(2, 8, 24, 0.85);
+                padding: 8px 20px;
+                border: 1px solid rgba(255, 220, 100, 0.35);
+                border-radius: 4px;
+                pointer-events: none;
+                animation: prompt-fade 2s infinite;
             }
         `;
         document.head.appendChild(style);
 
         // Launch button click
         document.getElementById('launch-btn').addEventListener('click', () => {
-            if (this.onLaunch) { this.onLaunch(); return; }
             this.launchToOrbit();
         });
     }
@@ -189,22 +218,6 @@ export class LandingSystem {
         this.landPrompt.classList.add('hidden');
     }
 
-    hideSpaceHUD() {
-        const els = ['hud-top', 'hud-bottom', 'hud-left', 'hud-right', 'crosshair'];
-        for (const id of els) {
-            const el = document.getElementById(id);
-            if (el) el.style.display = 'none';
-        }
-    }
-
-    showSpaceHUD() {
-        const els = ['hud-top', 'hud-bottom', 'hud-left', 'hud-right', 'crosshair'];
-        for (const id of els) {
-            const el = document.getElementById(id);
-            if (el) el.style.display = '';
-        }
-    }
-
     // Initiate landing
     land(planet, system, spacePosition, cameraEuler) {
         this.isLanded = true;
@@ -212,6 +225,7 @@ export class LandingSystem {
         this.landedSystem = system;
         this.savedSpacePosition = spacePosition.clone();
         this.savedCameraEuler = { x: cameraEuler.x, y: cameraEuler.y };
+        this.samplesCollected = 0;
 
         // Generate terrain
         this.generateTerrain(planet);
@@ -219,9 +233,9 @@ export class LandingSystem {
         // Update UI
         document.getElementById('surface-planet-name').textContent = planet.name;
         document.getElementById('surface-planet-type').textContent = `${planet.type.name} - ${planet.type.desc}`;
+        document.getElementById('surface-samples').textContent = `SAMPLES: ${this.samplesCollected}/${this.totalSamples}`;
         this.launchButton.classList.remove('hidden');
         this.surfaceHUD.classList.remove('hidden');
-        this.hideSpaceHUD();
         this.hideLandPrompt();
 
         // Reset walk position
@@ -272,10 +286,13 @@ export class LandingSystem {
         // Add environmental objects
         this.generateSurfaceObjects(planet, terrainConfig, rng);
 
+        // Add collectible samples
+        this.generateCollectibles(planet, terrainConfig, rng);
+
         // Lighting
         this.setupSurfaceLighting(planet, terrainConfig);
 
-        // Sky
+        // Sky color/fog
         this.setupSurfaceSky(planet, terrainConfig);
     }
 
@@ -337,6 +354,8 @@ export class LandingSystem {
             new THREE.OctahedronGeometry(1, 0) :
             config.objectType === 'dunes' ?
             new THREE.ConeGeometry(1, 2, 5) :
+            config.objectType === 'lava' ?
+            new THREE.TetrahedronGeometry(1, 0) :
             new THREE.DodecahedronGeometry(1, 0);
 
         for (let i = 0; i < objCount; i++) {
@@ -367,18 +386,65 @@ export class LandingSystem {
         }
     }
 
+    generateCollectibles(planet, config, rng) {
+        // Place glowing collectible samples on the surface
+        const sampleCount = 3 + Math.floor(rng() * 5);
+        this.totalSamples = sampleCount;
+        this.collectibles = [];
+
+        const sampleGeo = new THREE.OctahedronGeometry(0.4, 0);
+
+        for (let i = 0; i < sampleCount; i++) {
+            const x = (rng() - 0.5) * 140;
+            const z = (rng() - 0.5) * 140;
+            const y = this.getTerrainHeight(x, z, config, this.hashString(planet.name));
+
+            const color = new THREE.Color(0.2, 0.8, 1.0);
+            const mat = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.8,
+            });
+
+            const mesh = new THREE.Mesh(sampleGeo, mat);
+            mesh.position.set(x, y + 1.2, z);
+            mesh.userData.collectible = true;
+            mesh.userData.index = i;
+            this.scene.add(mesh);
+            this.surfaceObjects.push(mesh);
+            this.collectibles.push(mesh);
+
+            // Glow sprite
+            const spriteMat = new THREE.SpriteMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.3,
+                blending: THREE.AdditiveBlending,
+            });
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.position.copy(mesh.position);
+            sprite.scale.setScalar(3);
+            sprite.userData.parentCollectible = mesh;
+            this.scene.add(sprite);
+            this.surfaceObjects.push(sprite);
+        }
+    }
+
     setupSurfaceLighting(planet, config) {
+        // Ambient for the surface
         const ambColor = new THREE.Color(planet.color[0] * 0.2, planet.color[1] * 0.2, planet.color[2] * 0.2);
         const ambient = new THREE.AmbientLight(ambColor, 0.4);
         this.scene.add(ambient);
         this.surfaceLights.push(ambient);
 
+        // Directional "sun"
         const sunColor = new THREE.Color(1.0, 0.95, 0.85);
         const directional = new THREE.DirectionalLight(sunColor, 1.2);
         directional.position.set(50, 80, 30);
         this.scene.add(directional);
         this.surfaceLights.push(directional);
 
+        // Hemisphere for sky bounce
         const hemi = new THREE.HemisphereLight(
             new THREE.Color(0.4, 0.5, 0.7),
             new THREE.Color(planet.color[0] * 0.3, planet.color[1] * 0.3, planet.color[2] * 0.3),
@@ -389,6 +455,7 @@ export class LandingSystem {
     }
 
     setupSurfaceSky(planet, config) {
+        // Simple sky sphere
         const skyGeo = new THREE.SphereGeometry(500, 32, 32);
         const skyColor = new THREE.Color(
             planet.color[0] * 0.15 + 0.02,
@@ -403,13 +470,13 @@ export class LandingSystem {
         this.scene.add(this.skybox);
         this.surfaceObjects.push(this.skybox);
 
-        // Stars in the sky
-        const starCount = 200;
+        // Add some stars in the sky
+        const starCount = 300;
         const starGeo = new THREE.BufferGeometry();
         const starPositions = new Float32Array(starCount * 3);
         for (let i = 0; i < starCount; i++) {
             const theta = Math.random() * Math.PI * 2;
-            const phi = Math.random() * Math.PI * 0.5;
+            const phi = Math.random() * Math.PI * 0.5; // upper hemisphere only
             const r = 480;
             starPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
             starPositions[i * 3 + 1] = r * Math.cos(phi);
@@ -488,23 +555,67 @@ export class LandingSystem {
         if (this.skybox) {
             this.skybox.position.copy(this.walkPosition);
         }
+
+        // Animate collectibles (rotate + bob)
+        for (const col of this.collectibles) {
+            if (!col.userData.collected) {
+                col.rotation.y += delta * 2;
+                col.position.y += Math.sin(Date.now() * 0.003 + col.userData.index) * 0.003;
+            }
+        }
+
+        // Check collectible proximity
+        this.checkCollectibles(input);
+    }
+
+    checkCollectibles(input) {
+        let nearCollectible = false;
+
+        for (const col of this.collectibles) {
+            if (col.userData.collected) continue;
+            const dist = this.walkPosition.distanceTo(col.position);
+            if (dist < 3) {
+                nearCollectible = true;
+                if (input.wasPressed('KeyE')) {
+                    col.userData.collected = true;
+                    col.visible = false;
+                    // Hide glow sprite too
+                    for (const obj of this.surfaceObjects) {
+                        if (obj.userData && obj.userData.parentCollectible === col) {
+                            obj.visible = false;
+                        }
+                    }
+                    this.samplesCollected++;
+                    document.getElementById('surface-samples').textContent =
+                        `SAMPLES: ${this.samplesCollected}/${this.totalSamples}`;
+                }
+                break;
+            }
+        }
+
+        if (nearCollectible) {
+            this.collectPrompt.classList.remove('hidden');
+        } else {
+            this.collectPrompt.classList.add('hidden');
+        }
     }
 
     launchToOrbit() {
-        if (!this.isLanded) return null;
+        if (!this.isLanded) return;
 
         this.isLanded = false;
         this.clearSurface();
 
-        // Hide surface UI, show space HUD
+        // Hide surface UI
         this.launchButton.classList.add('hidden');
         this.surfaceHUD.classList.add('hidden');
-        this.showSpaceHUD();
+        this.collectPrompt.classList.add('hidden');
 
         // Return position and camera data for the game to restore
         return {
             position: this.savedSpacePosition,
             euler: this.savedCameraEuler,
+            samplesCollected: this.samplesCollected,
         };
     }
 
@@ -522,6 +633,7 @@ export class LandingSystem {
         }
         this.surfaceObjects = [];
         this.surfaceLights = [];
+        this.collectibles = [];
         this.terrain = null;
         this.skybox = null;
     }

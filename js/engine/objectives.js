@@ -16,6 +16,7 @@ export class ObjectivesSystem {
             fiveAnomalies: false,
             firstLanding: false,
             tenLandings: false,
+            firstSample: false,
             maxSpeed: false,
             longDistance: false,
             originFound: false,
@@ -23,6 +24,7 @@ export class ObjectivesSystem {
 
         this.anomaliesFound = [];
         this.totalAnomalies = 0;
+        this.totalSamplesCollected = 0;
         this.completionPercent = 0;
         this.credits = 0;
 
@@ -168,6 +170,26 @@ export class ObjectivesSystem {
         this.credits += 50;
     }
 
+    onSamplesCollected(count) {
+        if (count > 0) {
+            this.totalSamplesCollected += count;
+            const reward = count * 30;
+            this.credits += reward;
+
+            if (!this.milestones.firstSample && this.totalSamplesCollected >= 1) {
+                this.milestones.firstSample = true;
+                if (this.notifications) {
+                    this.notifications.show('MILESTONE: First Sample Collected!', 'discovery', 4000);
+                }
+                this.credits += 100;
+            }
+
+            if (this.notifications) {
+                this.notifications.show(`+${reward} credits (${count} samples)`, 'success', 2000);
+            }
+        }
+    }
+
     checkMilestones(stats) {
         if (stats) this._lastStats = stats;
         stats = stats || this._lastStats;
@@ -290,6 +312,7 @@ export class ObjectivesSystem {
             milestones: { ...this.milestones },
             anomaliesFound: [...this.anomaliesFound],
             totalAnomalies: this.totalAnomalies,
+            totalSamplesCollected: this.totalSamplesCollected,
             credits: this.credits,
             originDiscovered: this.originDiscovered,
             originHintDistance: this.originHintDistance,
@@ -305,6 +328,7 @@ export class ObjectivesSystem {
         if (data.milestones) Object.assign(this.milestones, data.milestones);
         if (data.anomaliesFound) this.anomaliesFound = data.anomaliesFound;
         if (data.totalAnomalies !== undefined) this.totalAnomalies = data.totalAnomalies;
+        if (data.totalSamplesCollected !== undefined) this.totalSamplesCollected = data.totalSamplesCollected;
         if (data.credits !== undefined) this.credits = data.credits;
         if (data.originDiscovered !== undefined) this.originDiscovered = data.originDiscovered;
         if (data.originHintDistance !== undefined) this.originHintDistance = data.originHintDistance;
