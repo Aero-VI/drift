@@ -12,6 +12,7 @@ import { Scanner } from './ui/scanner.js';
 import { Minimap } from './ui/minimap.js';
 import { GalaxyMap } from './ui/galaxymap.js';
 import { TargetingSystem } from './ui/targeting.js';
+import { Journal } from './ui/journal.js';
 
 class Game {
     constructor() {
@@ -27,6 +28,7 @@ class Game {
         this.minimap = null;
         this.galaxyMap = null;
         this.targeting = null;
+        this.journal = null;
         this.speedLines = null;
         this.dustParticles = null;
 
@@ -45,7 +47,6 @@ class Game {
         try {
             loadingStatus.textContent = 'Initializing engine...';
             loadingBar.style.width = '10%';
-
             const canvas = document.getElementById('game-canvas');
             this.renderer = new Renderer(canvas);
             this.camera = new GameCamera();
@@ -83,6 +84,7 @@ class Game {
             this.minimap = new Minimap();
             this.galaxyMap = new GalaxyMap();
             this.targeting = new TargetingSystem();
+            this.journal = new Journal();
             this.setupInteractions();
             await this.sleep(150);
 
@@ -128,27 +130,22 @@ class Game {
         const delta = Math.min(this.clock.getDelta(), 0.05);
         this.time += delta;
 
-        // Init audio on first input
         if (!this.audioInitialized && (this.input.isDown('KeyW') || this.input.mouseDown)) {
             this.audio.init();
             this.audioInitialized = true;
         }
 
-        // Update player
         this.player.update(this.input, delta);
 
-        // Update world
         const sector = this.systemManager.update(this.player.position, this.time);
         this.starfield.update(this.time);
 
-        // Update effects
         this.speedLines.update(this.camera.camera, this.player.speed, this.player.boosting || this.player.warping, delta);
         this.dustParticles.update(this.player.position, this.time);
 
-        // Update targeting
         this.targeting.update(this.camera.camera, this.player);
 
-        // Discovery check (every 0.5s)
+        // Discovery check
         if (this.time - this.lastDiscoveryCheck > 0.5) {
             this.lastDiscoveryCheck = this.time;
             const nearest = this.systemManager.getNearestSystem(this.player.position, 100);
@@ -158,15 +155,14 @@ class Game {
                     nearest.system.discovered = true;
                     this.hud.showDiscovery(nearest.system.name);
                     this.audio.playDiscovery();
+                    this.journal.addEntry(nearest.system);
                 }
             }
         }
 
-        // Scan data
         const nearbySystems = this.systemManager.scanNearby(this.player.position, 5000);
         const nearestSystem = this.systemManager.getNearestSystem(this.player.position);
 
-        // UI updates
         this.hud.update(this.player, sector, nearestSystem);
         this.minimap.update(this.player.position, nearbySystems, this.camera.getDirection());
 
@@ -181,13 +177,17 @@ class Game {
             this.galaxyMap.toggle(this.player.position, this.systemManager);
         }
 
+        if (this.input.wasPressed('KeyJ')) {
+            this.journal.toggle();
+        }
+
         if (this.input.wasPressed('Escape')) {
             this.scanner.close();
             this.galaxyMap.close();
+            this.journal.close();
             this.player.clearTarget();
         }
 
-        // Warp to target
         if (this.input.wasPressed('KeyF') && this.player.lockedTarget) {
             const started = this.player.startWarp();
             if (started) {
@@ -195,9 +195,7 @@ class Game {
             }
         }
 
-        // Click to lock nearest system in view
         if (this.input.wasPressed('KeyQ')) {
-            // Lock nearest visible system
             const nearest = this.systemManager.getNearestSystem(this.player.position, 3000);
             if (nearest) {
                 const [sx, sy, sz] = nearest.sectorKey.split(',').map(Number);
@@ -214,7 +212,6 @@ class Game {
             this.audio.playBoost();
         }
 
-        // Render
         this.renderer.render(this.camera.camera);
         this.input.endFrame();
     }
