@@ -1,0 +1,413 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    overflow: hidden;
+    background: #000;
+    font-family: 'Courier New', monospace;
+    color: #e0e0e0;
+    cursor: none;
+}
+
+#game-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* Loading Screen */
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 1.5s ease;
+}
+
+#loading-screen.fade-out {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loader-content {
+    text-align: center;
+}
+
+.loader-title {
+    font-size: 72px;
+    font-weight: 100;
+    letter-spacing: 30px;
+    color: #fff;
+    text-shadow: 0 0 40px rgba(100, 180, 255, 0.5);
+    margin-bottom: 8px;
+}
+
+.loader-subtitle {
+    font-size: 14px;
+    letter-spacing: 8px;
+    color: rgba(100, 180, 255, 0.6);
+    text-transform: uppercase;
+    margin-bottom: 40px;
+}
+
+.loader-bar-container {
+    width: 300px;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 0 auto 20px;
+    border-radius: 1px;
+}
+
+.loader-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(100, 180, 255, 0.8), rgba(180, 100, 255, 0.8));
+    border-radius: 1px;
+    transition: width 0.3s ease;
+}
+
+.loader-status {
+    font-size: 12px;
+    letter-spacing: 4px;
+    color: rgba(255, 255, 255, 0.3);
+    text-transform: uppercase;
+}
+
+/* UI Overlay */
+#ui-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
+}
+
+#ui-overlay button, #ui-overlay .clickable {
+    pointer-events: auto;
+}
+
+/* Crosshair */
+#crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 20px;
+    color: rgba(100, 180, 255, 0.5);
+    text-shadow: 0 0 10px rgba(100, 180, 255, 0.3);
+    font-weight: 100;
+}
+
+/* HUD Top */
+#hud-top {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+#location-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+#sector-name {
+    font-size: 14px;
+    letter-spacing: 4px;
+    color: rgba(100, 180, 255, 0.7);
+    text-transform: uppercase;
+}
+
+#system-name {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+#speed-display {
+    text-align: right;
+}
+
+#speed-display .label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: rgba(255, 255, 255, 0.3);
+    display: block;
+}
+
+#speed-value {
+    font-size: 28px;
+    font-weight: 100;
+    color: rgba(100, 180, 255, 0.8);
+}
+
+#speed-display .unit {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.3);
+    letter-spacing: 2px;
+}
+
+/* HUD Bottom */
+#hud-bottom {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+#controls-hint {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.2);
+    text-transform: uppercase;
+}
+
+#controls-hint span {
+    color: rgba(100, 180, 255, 0.5);
+}
+
+/* HUD Left */
+#hud-left {
+    position: absolute;
+    bottom: 60px;
+    left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#hud-left .label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: rgba(255, 255, 255, 0.3);
+    margin-bottom: 3px;
+    display: block;
+}
+
+.bar-outer {
+    width: 150px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bar-inner {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, rgba(100, 180, 255, 0.6), rgba(100, 180, 255, 0.9));
+    transition: width 0.3s ease;
+}
+
+.bar-inner.shield {
+    background: linear-gradient(90deg, rgba(100, 255, 180, 0.6), rgba(100, 255, 180, 0.9));
+}
+
+.bar-inner.low {
+    background: linear-gradient(90deg, rgba(255, 100, 100, 0.6), rgba(255, 100, 100, 0.9));
+}
+
+/* HUD Right */
+#hud-right {
+    position: absolute;
+    bottom: 60px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+#minimap-container {
+    border: 1px solid rgba(100, 180, 255, 0.2);
+    background: rgba(0, 0, 0, 0.4);
+    padding: 2px;
+}
+
+#minimap-canvas {
+    display: block;
+}
+
+#compass {
+    font-size: 12px;
+    letter-spacing: 3px;
+    color: rgba(100, 180, 255, 0.5);
+    text-align: center;
+    width: 184px;
+}
+
+/* Scan Panel */
+#scan-panel {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    max-height: 500px;
+    background: rgba(0, 5, 15, 0.95);
+    border: 1px solid rgba(100, 180, 255, 0.3);
+    padding: 20px;
+    pointer-events: auto;
+    overflow-y: auto;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(100, 180, 255, 0.15);
+    font-size: 12px;
+    letter-spacing: 4px;
+    color: rgba(100, 180, 255, 0.7);
+}
+
+.panel-header button {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+}
+
+.panel-header button:hover {
+    color: rgba(100, 180, 255, 0.8);
+}
+
+#scan-content {
+    font-size: 12px;
+    line-height: 1.8;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.scan-item {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.scan-item:hover {
+    color: rgba(100, 180, 255, 0.8);
+}
+
+.scan-item .scan-name {
+    color: rgba(100, 180, 255, 0.8);
+    font-size: 13px;
+}
+
+.scan-item .scan-detail {
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.3);
+    letter-spacing: 2px;
+    margin-top: 2px;
+}
+
+/* Discovery Popup */
+#discovery-popup {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 24px;
+    background: rgba(0, 5, 15, 0.85);
+    border: 1px solid rgba(100, 180, 255, 0.4);
+    animation: discovery-in 0.5s ease;
+}
+
+@keyframes discovery-in {
+    from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.discovery-icon {
+    font-size: 24px;
+    color: rgba(255, 200, 50, 0.9);
+    text-shadow: 0 0 20px rgba(255, 200, 50, 0.4);
+}
+
+.discovery-label {
+    font-size: 9px;
+    letter-spacing: 4px;
+    color: rgba(255, 200, 50, 0.6);
+    display: block;
+}
+
+#discovery-name {
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: rgba(100, 180, 255, 0.9);
+}
+
+/* Galaxy Map */
+#galaxy-map {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 5, 15, 0.95);
+    border: 1px solid rgba(100, 180, 255, 0.3);
+    padding: 20px;
+    pointer-events: auto;
+}
+
+#map-canvas {
+    display: block;
+    margin-bottom: 10px;
+    border: 1px solid rgba(100, 180, 255, 0.1);
+}
+
+#map-info {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 2px;
+}
+
+/* Hidden utility */
+.hidden {
+    display: none !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 4px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(100, 180, 255, 0.3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .loader-title { font-size: 48px; letter-spacing: 15px; }
+    #controls-hint { font-size: 9px; }
+    #scan-panel { width: 90%; }
+    #galaxy-map { width: 90%; }
+    #map-canvas { width: 100%; height: auto; }
+    #minimap-container { display: none; }
+    .bar-outer { width: 100px; }
+}

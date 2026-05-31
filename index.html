@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DRIFT</title>
+    <link rel="stylesheet" href="css/ui.css">
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loader-content">
+            <h1 class="loader-title">DRIFT</h1>
+            <p class="loader-subtitle">procedural space exploration</p>
+            <div class="loader-bar-container">
+                <div class="loader-bar" id="loader-bar"></div>
+            </div>
+            <p class="loader-status" id="loader-status">Generating universe...</p>
+        </div>
+    </div>
+
+    <canvas id="game-canvas"></canvas>
+
+    <div id="ui-overlay">
+        <div id="hud-top">
+            <div id="location-info">
+                <span id="sector-name">SECTOR 0-0-0</span>
+                <span id="system-name"></span>
+            </div>
+            <div id="speed-display">
+                <span class="label">VELOCITY</span>
+                <span id="speed-value">0</span>
+                <span class="unit">u/s</span>
+            </div>
+        </div>
+
+        <div id="hud-bottom">
+            <div id="controls-hint">
+                <span>WASD</span> fly &nbsp;|&nbsp;
+                <span>MOUSE</span> look &nbsp;|&nbsp;
+                <span>SHIFT</span> boost &nbsp;|&nbsp;
+                <span>SCROLL</span> speed &nbsp;|&nbsp;
+                <span>E</span> scan &nbsp;|&nbsp;
+                <span>TAB</span> map &nbsp;|&nbsp;
+                <span>CLICK</span> lock on
+            </div>
+        </div>
+
+        <div id="hud-left">
+            <div id="fuel-container">
+                <span class="label">FUEL</span>
+                <div class="bar-outer"><div class="bar-inner" id="fuel-bar"></div></div>
+            </div>
+            <div id="shield-container">
+                <span class="label">SHIELD</span>
+                <div class="bar-outer"><div class="bar-inner shield" id="shield-bar"></div></div>
+            </div>
+        </div>
+
+        <div id="hud-right">
+            <div id="minimap-container">
+                <canvas id="minimap-canvas" width="180" height="180"></canvas>
+            </div>
+            <div id="compass">
+                <span id="compass-dir">N</span>
+            </div>
+        </div>
+
+        <div id="scan-panel" class="hidden">
+            <div class="panel-header">
+                <span>SCAN RESULTS</span>
+                <button id="scan-close">[X]</button>
+            </div>
+            <div id="scan-content"></div>
+        </div>
+
+        <div id="discovery-popup" class="hidden">
+            <div class="discovery-icon">✦</div>
+            <div class="discovery-text">
+                <span class="discovery-label">NEW DISCOVERY</span>
+                <span id="discovery-name"></span>
+            </div>
+        </div>
+
+        <div id="galaxy-map" class="hidden">
+            <div class="panel-header">
+                <span>GALAXY MAP</span>
+                <button id="map-close">[X]</button>
+            </div>
+            <canvas id="map-canvas" width="600" height="400"></canvas>
+            <div id="map-info">
+                <span id="map-stats"></span>
+            </div>
+        </div>
+
+        <div id="crosshair">+</div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
