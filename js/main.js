@@ -86,6 +86,7 @@ class Game {
             this.objectives = new ObjectivesSystem();
             this.objectives.setNotifications(this.notifications);
             this.landing = new LandingSystem(this.renderer.scene, this.camera, this.renderer);
+            this.landing.onLaunch = () => this.doLaunch();
             this.upgradesUI = new UpgradesUI();
             this.saveSystem = new SaveSystem();
             this.setupInteractions();

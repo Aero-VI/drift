@@ -141,14 +141,15 @@ body.ui-open {
 #sector-name {
     font-size: 14px;
     letter-spacing: 4px;
-    color: rgba(100, 180, 255, 0.7);
+    color: rgba(140, 200, 255, 0.85);
     text-transform: uppercase;
+    text-shadow: 0 0 8px rgba(100, 180, 255, 0.2);
 }
 
 #system-name {
     font-size: 11px;
     letter-spacing: 2px;
-    color: rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.5);
 }
 
 #speed-display {
@@ -158,44 +159,47 @@ body.ui-open {
 #speed-display .label {
     font-size: 10px;
     letter-spacing: 3px;
-    color: rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.4);
     display: block;
 }
 
 #speed-value {
     font-size: 28px;
     font-weight: 100;
-    color: rgba(100, 180, 255, 0.8);
+    color: rgba(120, 200, 255, 0.9);
+    text-shadow: 0 0 12px rgba(100, 180, 255, 0.3);
 }
 
 #speed-display .unit {
     font-size: 10px;
-    color: rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.4);
     letter-spacing: 2px;
 }
 
-/* HUD Bottom - Controls Panel (FIXED: more readable) */
+/* HUD Bottom - Controls Panel */
 #hud-bottom {
     position: absolute;
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(5, 15, 40, 0.75);
-    padding: 10px 18px;
-    border: 1px solid rgba(60, 130, 220, 0.25);
+    background: rgba(2, 8, 30, 0.88);
+    padding: 12px 22px;
+    border: 1px solid rgba(60, 140, 240, 0.3);
     border-radius: 4px;
+    backdrop-filter: blur(4px);
 }
 
 #controls-hint {
     font-size: 11px;
     letter-spacing: 2px;
-    color: rgba(220, 230, 245, 0.7);
+    color: rgba(235, 240, 255, 0.8);
     text-transform: uppercase;
 }
 
 #controls-hint span {
-    color: rgba(130, 200, 255, 0.9);
+    color: rgba(150, 215, 255, 1.0);
     font-weight: bold;
+    text-shadow: 0 0 6px rgba(100, 180, 255, 0.3);
 }
 
 /* HUD Left */
@@ -211,31 +215,39 @@ body.ui-open {
 #hud-left .label {
     font-size: 9px;
     letter-spacing: 3px;
-    color: rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.45);
     margin-bottom: 3px;
     display: block;
 }
 
 .bar-outer {
     width: 150px;
-    height: 4px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    height: 5px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
 }
 
 .bar-inner {
     height: 100%;
     width: 100%;
-    background: linear-gradient(90deg, rgba(100, 180, 255, 0.6), rgba(100, 180, 255, 0.9));
+    background: linear-gradient(90deg, rgba(80, 160, 255, 0.7), rgba(120, 200, 255, 0.95));
     transition: width 0.3s ease;
+    border-radius: 1px;
 }
 
 .bar-inner.shield {
-    background: linear-gradient(90deg, rgba(100, 255, 180, 0.6), rgba(100, 255, 180, 0.9));
+    background: linear-gradient(90deg, rgba(80, 255, 160, 0.7), rgba(120, 255, 200, 0.95));
 }
 
 .bar-inner.low {
-    background: linear-gradient(90deg, rgba(255, 100, 100, 0.6), rgba(255, 100, 100, 0.9));
+    background: linear-gradient(90deg, rgba(255, 80, 80, 0.7), rgba(255, 120, 120, 0.95));
+    animation: low-pulse 1s infinite;
+}
+
+@keyframes low-pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
 }
 
 /* HUD Right */
@@ -250,9 +262,10 @@ body.ui-open {
 }
 
 #minimap-container {
-    border: 1px solid rgba(100, 180, 255, 0.2);
-    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(100, 180, 255, 0.25);
+    background: rgba(0, 5, 20, 0.5);
     padding: 2px;
+    border-radius: 3px;
 }
 
 #minimap-canvas {
@@ -262,9 +275,39 @@ body.ui-open {
 #compass {
     font-size: 12px;
     letter-spacing: 3px;
-    color: rgba(100, 180, 255, 0.5);
+    color: rgba(120, 190, 255, 0.6);
     text-align: center;
     width: 184px;
+}
+
+/* Credits display in HUD */
+#credits-hud {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
+    letter-spacing: 3px;
+    color: rgba(255, 220, 100, 0.7);
+    text-shadow: 0 0 8px rgba(255, 220, 100, 0.2);
+}
+
+/* Save indicator */
+#save-indicator {
+    position: absolute;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: rgba(100, 255, 180, 0.6);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+#save-indicator.visible {
+    opacity: 1;
 }
 
 /* Scan Panel */
@@ -273,14 +316,16 @@ body.ui-open {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 400px;
+    width: 420px;
     max-height: 500px;
-    background: rgba(3, 10, 28, 0.96);
+    background: rgba(2, 8, 24, 0.97);
     border: 1px solid rgba(80, 160, 240, 0.35);
     padding: 20px;
     pointer-events: auto;
     overflow-y: auto;
     cursor: default;
+    border-radius: 4px;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(100, 180, 255, 0.02);
 }
 
 .panel-header {
@@ -292,7 +337,7 @@ body.ui-open {
     border-bottom: 1px solid rgba(100, 180, 255, 0.15);
     font-size: 12px;
     letter-spacing: 4px;
-    color: rgba(130, 200, 255, 0.85);
+    color: rgba(150, 210, 255, 0.9);
 }
 
 .panel-header button {
@@ -302,16 +347,18 @@ body.ui-open {
     cursor: pointer;
     font-family: 'Courier New', monospace;
     font-size: 14px;
+    padding: 4px 8px;
+    transition: color 0.2s ease;
 }
 
 .panel-header button:hover {
-    color: rgba(100, 180, 255, 0.8);
+    color: rgba(100, 180, 255, 0.9);
 }
 
 #scan-content {
     font-size: 12px;
     line-height: 1.8;
-    color: rgba(220, 230, 245, 0.7);
+    color: rgba(220, 230, 245, 0.75);
 }
 
 .scan-item {
@@ -319,20 +366,22 @@ body.ui-open {
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     cursor: pointer;
     pointer-events: auto;
+    transition: background 0.2s ease;
 }
 
 .scan-item:hover {
-    color: rgba(100, 180, 255, 0.8);
+    color: rgba(120, 200, 255, 0.9);
+    background: rgba(100, 180, 255, 0.05);
 }
 
 .scan-item .scan-name {
-    color: rgba(130, 200, 255, 0.9);
+    color: rgba(150, 215, 255, 0.95);
     font-size: 13px;
 }
 
 .scan-item .scan-detail {
     font-size: 10px;
-    color: rgba(200, 210, 230, 0.45);
+    color: rgba(200, 210, 230, 0.5);
     letter-spacing: 2px;
     margin-top: 2px;
 }
@@ -347,9 +396,11 @@ body.ui-open {
     align-items: center;
     gap: 12px;
     padding: 12px 24px;
-    background: rgba(3, 10, 28, 0.9);
+    background: rgba(2, 8, 24, 0.92);
     border: 1px solid rgba(100, 180, 255, 0.4);
+    border-radius: 4px;
     animation: discovery-in 0.5s ease;
+    box-shadow: 0 0 30px rgba(100, 180, 255, 0.1);
 }
 
 @keyframes discovery-in {
@@ -373,7 +424,7 @@ body.ui-open {
 #discovery-name {
     font-size: 14px;
     letter-spacing: 2px;
-    color: rgba(130, 200, 255, 0.95);
+    color: rgba(150, 215, 255, 0.95);
 }
 
 /* Galaxy Map */
@@ -382,22 +433,25 @@ body.ui-open {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(3, 10, 28, 0.96);
+    background: rgba(2, 8, 24, 0.97);
     border: 1px solid rgba(80, 160, 240, 0.35);
     padding: 20px;
     pointer-events: auto;
     cursor: default;
+    border-radius: 4px;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
 }
 
 #map-canvas {
     display: block;
     margin-bottom: 10px;
     border: 1px solid rgba(100, 180, 255, 0.1);
+    border-radius: 2px;
 }
 
 #map-info {
     font-size: 11px;
-    color: rgba(200, 215, 240, 0.5);
+    color: rgba(200, 215, 240, 0.55);
     letter-spacing: 2px;
 }
 
@@ -415,6 +469,7 @@ body.ui-open {
 }
 ::-webkit-scrollbar-thumb {
     background: rgba(100, 180, 255, 0.3);
+    border-radius: 2px;
 }
 
 /* Responsive */

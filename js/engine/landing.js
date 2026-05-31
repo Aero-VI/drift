@@ -44,7 +44,7 @@ export class LandingSystem {
         this.launchButton.className = 'hidden';
         this.launchButton.innerHTML = `
             <button id="launch-btn">
-                <span class="launch-icon">▲</span>
+                <span class="launch-icon">&#9650;</span>
                 <span>LAUNCH TO ORBIT</span>
             </button>
         `;
@@ -58,6 +58,7 @@ export class LandingSystem {
             <div class="surface-info">
                 <span id="surface-planet-name">---</span>
                 <span id="surface-planet-type">---</span>
+                <span id="surface-controls">WASD move | SHIFT sprint | SPACE jump | G launch</span>
             </div>
         `;
         document.getElementById('ui-overlay').appendChild(this.surfaceHUD);
@@ -130,6 +131,12 @@ export class LandingSystem {
                 letter-spacing: 2px;
                 color: rgba(255, 255, 255, 0.4);
             }
+            #surface-controls {
+                font-size: 10px;
+                letter-spacing: 2px;
+                color: rgba(200, 220, 245, 0.5);
+                margin-top: 8px;
+            }
             #land-prompt {
                 position: absolute;
                 bottom: 120px;
@@ -156,6 +163,7 @@ export class LandingSystem {
 
         // Launch button click
         document.getElementById('launch-btn').addEventListener('click', () => {
+            if (this.onLaunch) { this.onLaunch(); return; }
             this.launchToOrbit();
         });
     }
@@ -181,6 +189,22 @@ export class LandingSystem {
         this.landPrompt.classList.add('hidden');
     }
 
+    hideSpaceHUD() {
+        const els = ['hud-top', 'hud-bottom', 'hud-left', 'hud-right', 'crosshair'];
+        for (const id of els) {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        }
+    }
+
+    showSpaceHUD() {
+        const els = ['hud-top', 'hud-bottom', 'hud-left', 'hud-right', 'crosshair'];
+        for (const id of els) {
+            const el = document.getElementById(id);
+            if (el) el.style.display = '';
+        }
+    }
+
     // Initiate landing
     land(planet, system, spacePosition, cameraEuler) {
         this.isLanded = true;
@@ -197,6 +221,7 @@ export class LandingSystem {
         document.getElementById('surface-planet-type').textContent = `${planet.type.name} - ${planet.type.desc}`;
         this.launchButton.classList.remove('hidden');
         this.surfaceHUD.classList.remove('hidden');
+        this.hideSpaceHUD();
         this.hideLandPrompt();
 
         // Reset walk position
@@ -250,7 +275,7 @@ export class LandingSystem {
         // Lighting
         this.setupSurfaceLighting(planet, terrainConfig);
 
-        // Sky color/fog
+        // Sky
         this.setupSurfaceSky(planet, terrainConfig);
     }
 
@@ -343,21 +368,17 @@ export class LandingSystem {
     }
 
     setupSurfaceLighting(planet, config) {
-        // Clear existing lights? No, we add our own tagged ones
-        // Ambient for the surface
         const ambColor = new THREE.Color(planet.color[0] * 0.2, planet.color[1] * 0.2, planet.color[2] * 0.2);
         const ambient = new THREE.AmbientLight(ambColor, 0.4);
         this.scene.add(ambient);
         this.surfaceLights.push(ambient);
 
-        // Directional "sun"
         const sunColor = new THREE.Color(1.0, 0.95, 0.85);
         const directional = new THREE.DirectionalLight(sunColor, 1.2);
         directional.position.set(50, 80, 30);
         this.scene.add(directional);
         this.surfaceLights.push(directional);
 
-        // Hemisphere for sky bounce
         const hemi = new THREE.HemisphereLight(
             new THREE.Color(0.4, 0.5, 0.7),
             new THREE.Color(planet.color[0] * 0.3, planet.color[1] * 0.3, planet.color[2] * 0.3),
@@ -368,7 +389,6 @@ export class LandingSystem {
     }
 
     setupSurfaceSky(planet, config) {
-        // Simple sky sphere
         const skyGeo = new THREE.SphereGeometry(500, 32, 32);
         const skyColor = new THREE.Color(
             planet.color[0] * 0.15 + 0.02,
@@ -383,13 +403,13 @@ export class LandingSystem {
         this.scene.add(this.skybox);
         this.surfaceObjects.push(this.skybox);
 
-        // Add some stars in the sky
+        // Stars in the sky
         const starCount = 200;
         const starGeo = new THREE.BufferGeometry();
         const starPositions = new Float32Array(starCount * 3);
         for (let i = 0; i < starCount; i++) {
             const theta = Math.random() * Math.PI * 2;
-            const phi = Math.random() * Math.PI * 0.5; // upper hemisphere only
+            const phi = Math.random() * Math.PI * 0.5;
             const r = 480;
             starPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
             starPositions[i * 3 + 1] = r * Math.cos(phi);
@@ -471,14 +491,15 @@ export class LandingSystem {
     }
 
     launchToOrbit() {
-        if (!this.isLanded) return;
+        if (!this.isLanded) return null;
 
         this.isLanded = false;
         this.clearSurface();
 
-        // Hide surface UI
+        // Hide surface UI, show space HUD
         this.launchButton.classList.add('hidden');
         this.surfaceHUD.classList.add('hidden');
+        this.showSpaceHUD();
 
         // Return position and camera data for the game to restore
         return {

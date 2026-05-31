@@ -8,21 +8,38 @@ export class SaveSystem {
     constructor() {
         this.saveTimer = null;
         this.lastSave = 0;
+        this.indicator = null;
+        this.createIndicator();
+    }
+
+    createIndicator() {
+        this.indicator = document.createElement('div');
+        this.indicator.id = 'save-indicator';
+        this.indicator.textContent = '[ SAVED ]';
+        document.getElementById('ui-overlay').appendChild(this.indicator);
+    }
+
+    showSaveIndicator() {
+        if (!this.indicator) return;
+        this.indicator.classList.add('visible');
+        setTimeout(() => {
+            this.indicator.classList.remove('visible');
+        }, 2000);
     }
 
     startAutoSave(game) {
         this.saveTimer = setInterval(() => {
             this.save(game);
+            this.showSaveIndicator();
         }, SAVE_INTERVAL);
-
-        // Also save on page unload
-        window.addEventListener('beforeunload', () => {
-            this.save(game);
-        });
     }
 
     save(game) {
         try {
+            // Calculate total play time
+            const currentPlayTime = (game.stats.totalPlayTime || 0) +
+                (Date.now() - (game.stats.sessionStartTime || Date.now()));
+
             const data = {
                 version: 1,
                 timestamp: Date.now(),
@@ -40,6 +57,7 @@ export class SaveSystem {
                     fuel: game.player.fuel,
                     shield: game.player.shield,
                     speedMultiplier: game.player.speedMultiplier,
+                    // Ship upgrades
                     maxSpeed: game.player.maxSpeed,
                     boostSpeed: game.player.boostSpeed,
                     warpSpeed: game.player.warpSpeed,
@@ -61,9 +79,10 @@ export class SaveSystem {
                     systemsDiscovered: game.stats.systemsDiscovered,
                     planetsLanded: game.stats.planetsLanded || 0,
                     anomaliesFound: game.stats.anomaliesFound || 0,
-                    totalPlayTime: (game.stats.totalPlayTime || 0) + (Date.now() - game.stats.sessionStartTime),
+                    totalPlayTime: currentPlayTime,
                 },
                 objectives: game.objectives ? game.objectives.serialize() : null,
+                upgrades: game.player.upgrades || {},
             };
 
             localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -152,6 +171,11 @@ export class SaveSystem {
             // Restore objectives
             if (data.objectives && game.objectives) {
                 game.objectives.deserialize(data.objectives);
+            }
+
+            // Restore upgrades
+            if (data.upgrades) {
+                game.player.upgrades = data.upgrades;
             }
 
             return true;
