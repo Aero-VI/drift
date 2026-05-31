@@ -230,6 +230,7 @@ class Game {
             this.audio.playBoost();
         }
 
+        this.renderer.updateEffects(this.time, this.player.warping ? 1.0 : 0.0);
         this.renderer.render(this.camera.camera);
         this.input.endFrame();
     }

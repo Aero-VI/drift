@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { createSpacePass } from './postfx.js';
 
 export class Renderer {
     constructor(canvas) {
@@ -22,6 +23,7 @@ export class Renderer {
 
         this.composer = null;
         this.bloomPass = null;
+        this.spacePass = null;
 
         window.addEventListener('resize', () => this.onResize());
     }
@@ -29,19 +31,28 @@ export class Renderer {
     setupPostProcessing(camera) {
         try {
             this.composer = new EffectComposer(this.renderer);
+
             const renderPass = new RenderPass(this.scene, camera);
             this.composer.addPass(renderPass);
 
             this.bloomPass = new UnrealBloomPass(
                 new THREE.Vector2(window.innerWidth, window.innerHeight),
-                0.8, // strength
-                0.4, // radius
-                0.85 // threshold
+                0.8, 0.4, 0.85
             );
             this.composer.addPass(this.bloomPass);
+
+            this.spacePass = createSpacePass();
+            this.composer.addPass(this.spacePass);
         } catch (e) {
             console.warn('Post-processing not available:', e);
             this.composer = null;
+        }
+    }
+
+    updateEffects(time, warpIntensity) {
+        if (this.spacePass) {
+            this.spacePass.uniforms.time.value = time;
+            this.spacePass.uniforms.warpIntensity.value = warpIntensity;
         }
     }
 
