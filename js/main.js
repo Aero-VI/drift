@@ -17,12 +17,17 @@ import { TargetingSystem } from './ui/targeting.js';
 import { Journal } from './ui/journal.js';
 import { NotificationSystem } from './ui/notifications.js';
 import { StatsTracker } from './ui/stats.js';
+import { SaveSystem } from './engine/savesystem.js';
+import { ObjectivesSystem } from './engine/objectives.js';
+import { LandingSystem } from './engine/landing.js';
+import { UpgradesUI } from './ui/upgrades.js';
 
 class Game {
     constructor() {
         this.clock = new THREE.Clock();
         this.time = 0;
         this.lastDiscoveryCheck = 0;
+        this.lastSectorCheck = { x: null, y: null, z: null };
         this.audioInitialized = false;
         this.wasWarping = false;
         this.init();
@@ -69,7 +74,7 @@ class Game {
             await this.sleep(150);
 
             loadingStatus.textContent = 'Loading interface...';
-            loadingBar.style.width = '85%';
+            loadingBar.style.width = '80%';
             this.hud = new HUD();
             this.scanner = new Scanner();
             this.minimap = new Minimap();
@@ -78,14 +83,28 @@ class Game {
             this.journal = new Journal();
             this.notifications = new NotificationSystem();
             this.stats = new StatsTracker();
+            this.objectives = new ObjectivesSystem();
+            this.objectives.setNotifications(this.notifications);
+            this.landing = new LandingSystem(this.renderer.scene, this.camera, this.renderer);
+            this.upgradesUI = new UpgradesUI();
+            this.saveSystem = new SaveSystem();
             this.setupInteractions();
-            await this.sleep(150);
+            await this.sleep(100);
 
-            loadingStatus.textContent = 'Ready. Click to enter.';
+            // Load saved game
+            loadingStatus.textContent = 'Loading save data...';
+            loadingBar.style.width = '90%';
+            const saveData = this.saveSystem.load();
+            if (saveData) {
+                this.saveSystem.restore(this, saveData);
+                loadingStatus.textContent = 'Save restored. Click to enter.';
+            } else {
+                loadingStatus.textContent = 'Ready. Click to enter.';
+            }
             loadingBar.style.width = '100%';
             loadingScreen.style.cursor = 'pointer';
 
-            // Wait for click on the LOADING SCREEN (not canvas, which is behind it)
+            // Wait for click on the LOADING SCREEN
             await new Promise(resolve => {
                 const handler = (e) => {
                     e.preventDefault();
@@ -97,18 +116,12 @@ class Game {
                 loadingScreen.addEventListener('touchstart', handler);
             });
 
-            // NOW set up pointer lock (after loading screen is being dismissed)
+            // NOW set up pointer lock
             this.camera.lock(canvas);
-
-            // Request pointer lock on desktop
-            if (document.pointerLockElement === undefined) {
-                // Pointer lock not supported (mobile), that's fine
-            } else {
+            if (document.pointerLockElement !== undefined) {
                 try {
                     await canvas.requestPointerLock();
-                } catch (e) {
-                    // Pointer lock denied or not supported, continue anyway
-                }
+                } catch (e) { /* ok */ }
             }
 
             // Fade out loading screen
@@ -117,8 +130,11 @@ class Game {
 
             this.notifications.show('SYSTEMS ONLINE', 'success', 2000);
             setTimeout(() => {
-                this.notifications.show('Press E to scan nearby systems', 'info', 4000);
+                this.notifications.show('Press E to scan | U for upgrades | G to land on planets', 'info', 5000);
             }, 2500);
+
+            // Start auto-save
+            this.saveSystem.startAutoSave(this);
 
             this.loop();
 
@@ -142,34 +158,26 @@ class Game {
     }
 
     isAnyUIOpen() {
-        return this.scanner.isOpen || this.galaxyMap.isOpen || this.journal.isOpen || this.stats.isOpen;
+        return this.scanner.isOpen || this.galaxyMap.isOpen ||
+               this.journal.isOpen || this.stats.isOpen || this.upgradesUI.isOpen;
     }
 
     openUI(panel, ...args) {
         this.camera.releasePointerLock();
-        if (panel === 'scanner') {
-            this.scanner.open(...args);
-        } else if (panel === 'galaxyMap') {
-            this.galaxyMap.open(...args);
-        } else if (panel === 'journal') {
-            this.journal.open();
-        } else if (panel === 'stats') {
-            this.stats.open();
-        }
+        if (panel === 'scanner') this.scanner.open(...args);
+        else if (panel === 'galaxyMap') this.galaxyMap.open(...args);
+        else if (panel === 'journal') this.journal.open();
+        else if (panel === 'stats') this.stats.open();
+        else if (panel === 'upgrades') this.upgradesUI.open(this.objectives, this.player);
     }
 
     closeUI(panel) {
-        if (panel === 'scanner') {
-            this.scanner.close();
-        } else if (panel === 'galaxyMap') {
-            this.galaxyMap.close();
-        } else if (panel === 'journal') {
-            this.journal.close();
-        } else if (panel === 'stats') {
-            this.stats.close();
-        }
+        if (panel === 'scanner') this.scanner.close();
+        else if (panel === 'galaxyMap') this.galaxyMap.close();
+        else if (panel === 'journal') this.journal.close();
+        else if (panel === 'stats') this.stats.close();
+        else if (panel === 'upgrades') this.upgradesUI.close();
 
-        // If ALL panels are now closed, re-enable pointer lock
         if (!this.isAnyUIOpen()) {
             this.camera.reacquirePointerLock();
         }
@@ -180,6 +188,7 @@ class Game {
         this.galaxyMap.close();
         this.journal.close();
         this.stats.close();
+        this.upgradesUI.close();
         this.camera.reacquirePointerLock();
     }
 
@@ -187,7 +196,8 @@ class Game {
         const isOpen = (panel === 'scanner') ? this.scanner.isOpen :
                        (panel === 'galaxyMap') ? this.galaxyMap.isOpen :
                        (panel === 'journal') ? this.journal.isOpen :
-                       (panel === 'stats') ? this.stats.isOpen : false;
+                       (panel === 'stats') ? this.stats.isOpen :
+                       (panel === 'upgrades') ? this.upgradesUI.isOpen : false;
 
         if (isOpen) {
             this.closeUI(panel);
@@ -197,6 +207,7 @@ class Game {
             if (panel !== 'galaxyMap') this.galaxyMap.close();
             if (panel !== 'journal') this.journal.close();
             if (panel !== 'stats') this.stats.close();
+            if (panel !== 'upgrades') this.upgradesUI.close();
             this.openUI(panel, ...args);
         }
     }
@@ -214,11 +225,20 @@ class Game {
 
         const uiOpen = this.isAnyUIOpen();
 
+        // If landed, use walking mode
+        if (this.landing.isLanded) {
+            this.updateLandedMode(delta, uiOpen);
+            this.renderer.render(this.camera.camera);
+            this.input.endFrame();
+            return;
+        }
+
+        // --- SPACE MODE ---
+
         // Update player (skip movement input when UI is open)
         if (!uiOpen) {
             this.player.update(this.input, delta);
         } else {
-            // Still update player physics (warping, momentum) but no new input
             this.player.updatePhysics(delta);
         }
         this.stats.update(this.player.position, this.player.speed);
@@ -230,12 +250,19 @@ class Game {
         if (!this.player.warping && this.wasWarping) {
             this.notifications.show('WARP COMPLETE', 'success', 2000);
             this.stats.addWarp();
+            this.objectives.onWarp();
         }
         this.wasWarping = this.player.warping;
 
         // Update world
         const sector = this.systemManager.update(this.player.position, this.time);
         this.starfield.update(this.time);
+
+        // Check for sector change (objectives/anomalies)
+        if (sector && (sector.x !== this.lastSectorCheck.x || sector.y !== this.lastSectorCheck.y || sector.z !== this.lastSectorCheck.z)) {
+            this.lastSectorCheck = { x: sector.x, y: sector.y, z: sector.z };
+            this.objectives.onSectorEnter(sector.x, sector.y, sector.z, this.player.position);
+        }
 
         // Update effects
         this.speedLines.update(this.camera.camera, this.player.speed, this.player.boosting || this.player.warping, delta);
@@ -264,7 +291,29 @@ class Game {
                     this.audio.playDiscovery();
                     this.journal.addEntry(nearest.system);
                     this.stats.addDiscovery();
+                    this.objectives.onDiscovery(nearest.system.name);
+                    this.objectives.checkMilestones(this.stats);
                 }
+            }
+        }
+
+        // Planet landing check
+        if (!uiOpen) {
+            const landable = this.landing.canLand(this.player.position, this.systemManager.planetMeshes);
+            if (landable) {
+                this.landing.showLandPrompt();
+                if (this.input.wasPressed('KeyG')) {
+                    this.landing.land(landable.planet, landable.system, this.player.position, {
+                        x: this.camera.euler.x,
+                        y: this.camera.euler.y
+                    });
+                    this.stats.planetsLanded = (this.stats.planetsLanded || 0) + 1;
+                    this.objectives.onLanding();
+                    this.objectives.checkMilestones(this.stats);
+                    this.notifications.show(`LANDING: ${landable.planet.name}`, 'success', 3000);
+                }
+            } else {
+                this.landing.hideLandPrompt();
             }
         }
 
@@ -274,7 +323,7 @@ class Game {
         this.hud.update(this.player, sector, nearestSystem);
         this.minimap.update(this.player.position, nearbySystems, this.camera.getDirection());
 
-        // Keys (only process when not in UI, except Escape and panel toggles)
+        // Keys
         if (this.input.wasPressed('KeyE')) {
             const scanResults = this.systemManager.scanNearby(this.player.position, 5000);
             this.toggleUI('scanner', scanResults, this.player.position);
@@ -291,6 +340,10 @@ class Game {
 
         if (this.input.wasPressed('KeyL')) {
             this.toggleUI('stats');
+        }
+
+        if (this.input.wasPressed('KeyU')) {
+            this.toggleUI('upgrades', this.objectives, this.player);
         }
 
         if (this.input.wasPressed('Escape')) {
@@ -332,6 +385,56 @@ class Game {
         this.renderer.updateEffects(this.time, this.player.warping ? 1.0 : 0.0);
         this.renderer.render(this.camera.camera);
         this.input.endFrame();
+    }
+
+    updateLandedMode(delta, uiOpen) {
+        // Walking on planet surface
+        if (!uiOpen) {
+            this.landing.updateWalking(this.input, delta, this.camera);
+        }
+
+        // Launch back to orbit via keyboard shortcut too
+        if (this.input.wasPressed('KeyG') && !uiOpen) {
+            this.doLaunch();
+        }
+
+        // Upgrades still accessible
+        if (this.input.wasPressed('KeyU')) {
+            this.toggleUI('upgrades', this.objectives, this.player);
+        }
+
+        if (this.input.wasPressed('KeyJ')) {
+            this.toggleUI('journal');
+        }
+
+        if (this.input.wasPressed('KeyL')) {
+            this.toggleUI('stats');
+        }
+
+        if (this.input.wasPressed('Escape')) {
+            this.closeAllUI();
+        }
+
+        this.input.endFrame();
+    }
+
+    doLaunch() {
+        const restoreData = this.landing.launchToOrbit();
+        if (restoreData) {
+            // Restore space position
+            this.player.position.copy(restoreData.position);
+            this.player.velocity.set(0, 0, 0);
+            this.player.speed = 0;
+
+            // Restore camera
+            if (restoreData.euler) {
+                this.camera.euler.x = restoreData.euler.x;
+                this.camera.euler.y = restoreData.euler.y;
+                this.camera.camera.quaternion.setFromEuler(this.camera.euler);
+            }
+
+            this.notifications.show('LAUNCH SUCCESSFUL', 'success', 2000);
+        }
     }
 }
 
