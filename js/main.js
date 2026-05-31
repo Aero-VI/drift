@@ -3,6 +3,7 @@ import { Renderer } from './engine/renderer.js';
 import { GameCamera } from './engine/camera.js';
 import { Input } from './engine/input.js';
 import { AudioEngine } from './engine/audio.js';
+import { SpeedLines, DustParticles } from './engine/effects.js';
 import { Starfield } from './world/starfield.js';
 import { StarSystemManager } from './world/systems.js';
 import { Player } from './entities/player.js';
@@ -24,6 +25,8 @@ class Game {
         this.scanner = null;
         this.minimap = null;
         this.galaxyMap = null;
+        this.speedLines = null;
+        this.dustParticles = null;
 
         this.clock = new THREE.Clock();
         this.time = 0;
@@ -52,30 +55,37 @@ class Game {
 
             // Phase 2: Stars
             loadingStatus.textContent = 'Generating starfield...';
-            loadingBar.style.width = '30%';
+            loadingBar.style.width = '25%';
 
             this.starfield = new Starfield(this.renderer.scene);
             await this.sleep(200);
 
             // Phase 3: Systems
             loadingStatus.textContent = 'Building star systems...';
-            loadingBar.style.width = '50%';
+            loadingBar.style.width = '45%';
 
             this.systemManager = new StarSystemManager(this.renderer.scene);
             await this.sleep(200);
 
-            // Phase 4: Player
+            // Phase 4: Effects
+            loadingStatus.textContent = 'Loading particle systems...';
+            loadingBar.style.width = '55%';
+
+            this.speedLines = new SpeedLines(this.renderer.scene);
+            this.dustParticles = new DustParticles(this.renderer.scene);
+            await this.sleep(100);
+
+            // Phase 5: Player
             loadingStatus.textContent = 'Calibrating ship systems...';
             loadingBar.style.width = '70%';
 
             this.player = new Player(this.camera);
-            // Start near a system
             this.player.position.set(100, 50, 100);
 
             this.renderer.setupPostProcessing(this.camera.camera);
             await this.sleep(200);
 
-            // Phase 5: UI
+            // Phase 6: UI
             loadingStatus.textContent = 'Loading interface...';
             loadingBar.style.width = '85%';
 
@@ -87,7 +97,7 @@ class Game {
             this.setupInteractions();
             await this.sleep(200);
 
-            // Phase 6: Camera lock
+            // Phase 7: Ready
             loadingStatus.textContent = 'Ready. Click to enter.';
             loadingBar.style.width = '100%';
 
@@ -121,12 +131,9 @@ class Game {
     }
 
     setupInteractions() {
-        // Scanner select callback
         this.scanner.onSelect = (result) => {
             this.player.lockTarget(result.system, result.worldPos);
         };
-
-        // Keyboard shortcuts (handled in update via input.wasPressed)
     }
 
     sleep(ms) {
@@ -136,7 +143,7 @@ class Game {
     loop() {
         requestAnimationFrame(() => this.loop());
 
-        const delta = Math.min(this.clock.getDelta(), 0.05); // cap delta
+        const delta = Math.min(this.clock.getDelta(), 0.05);
         this.time += delta;
 
         // Init audio on first input
@@ -152,8 +159,9 @@ class Game {
         const sector = this.systemManager.update(this.player.position, this.time);
         this.starfield.update(this.time);
 
-        // Move starfield with player (parallax: stars are far away)
-        // Stars stay put, they're far enough away
+        // Update effects
+        this.speedLines.update(this.camera.camera, this.player.speed, this.player.boosting, delta);
+        this.dustParticles.update(this.player.position, this.time);
 
         // Discovery check (every 0.5s)
         if (this.time - this.lastDiscoveryCheck > 0.5) {
@@ -197,7 +205,6 @@ class Game {
             this.galaxyMap.close();
         }
 
-        // Boost sound
         if (this.player.boosting && this.input.wasPressed('ShiftLeft')) {
             this.audio.playBoost();
         }
@@ -210,5 +217,4 @@ class Game {
     }
 }
 
-// Start
 new Game();
