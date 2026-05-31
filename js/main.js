@@ -31,11 +31,12 @@ class Game {
     async init() {
         const loadingBar = document.getElementById('loader-bar');
         const loadingStatus = document.getElementById('loader-status');
+        const loadingScreen = document.getElementById('loading-screen');
+        const canvas = document.getElementById('game-canvas');
 
         try {
             loadingStatus.textContent = 'Initializing engine...';
             loadingBar.style.width = '10%';
-            const canvas = document.getElementById('game-canvas');
             this.renderer = new Renderer(canvas);
             this.camera = new GameCamera();
             this.input = new Input();
@@ -82,17 +83,35 @@ class Game {
 
             loadingStatus.textContent = 'Ready. Click to enter.';
             loadingBar.style.width = '100%';
-            this.camera.lock(canvas);
+            loadingScreen.style.cursor = 'pointer';
 
+            // Wait for click on the LOADING SCREEN (not canvas, which is behind it)
             await new Promise(resolve => {
-                const handler = () => {
-                    canvas.removeEventListener('click', handler);
+                const handler = (e) => {
+                    e.preventDefault();
+                    loadingScreen.removeEventListener('click', handler);
+                    loadingScreen.removeEventListener('touchstart', handler);
                     resolve();
                 };
-                canvas.addEventListener('click', handler);
+                loadingScreen.addEventListener('click', handler);
+                loadingScreen.addEventListener('touchstart', handler);
             });
 
-            const loadingScreen = document.getElementById('loading-screen');
+            // NOW set up pointer lock (after loading screen is being dismissed)
+            this.camera.lock(canvas);
+
+            // Request pointer lock on desktop (mobile will just work without it)
+            if (document.pointerLockElement === undefined) {
+                // Pointer lock not supported (mobile), that's fine
+            } else {
+                try {
+                    await canvas.requestPointerLock();
+                } catch (e) {
+                    // Pointer lock denied or not supported, continue anyway
+                }
+            }
+
+            // Fade out loading screen
             loadingScreen.classList.add('fade-out');
             setTimeout(() => { loadingScreen.style.display = 'none'; }, 1500);
 
