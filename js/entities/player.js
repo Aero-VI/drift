@@ -91,6 +91,28 @@ export class Player {
         this.speed = this.velocity.length();
     }
 
+    // Physics-only update (no input) for when UI is open
+    updatePhysics(delta) {
+        // Handle warping even when UI is open
+        if (this.warping && this.lockedPosition) {
+            this.updateWarp(delta);
+            this.speed = this.warpSpeed;
+            return;
+        }
+
+        // Decelerate naturally (no input)
+        this.currentMaxSpeed = this.maxSpeed * this.speedMultiplier;
+        this.velocity.multiplyScalar(1 - this.deceleration * delta / Math.max(this.currentMaxSpeed, 1));
+        if (this.velocity.length() < 0.1) this.velocity.set(0, 0, 0);
+
+        this.position.addScaledVector(this.velocity, delta);
+        this.speed = this.velocity.length();
+
+        // Fuel regen while UI is open
+        this.fuel = Math.min(this.maxFuel, this.fuel + this.fuelRegenRate * delta);
+        this.boosting = false;
+    }
+
     startWarp() {
         if (!this.lockedPosition || this.warping) return false;
         const dist = this.position.distanceTo(this.lockedPosition);

@@ -13,28 +13,51 @@ export class GameCamera {
         this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
         this.sensitivity = 0.002;
         this.locked = false;
+        this.canvas = null;
+        this.uiOpen = false;
 
         window.addEventListener('resize', () => this.onResize());
     }
 
     lock(canvas) {
+        this.canvas = canvas;
+
         canvas.addEventListener('click', () => {
-            if (!document.pointerLockElement) {
+            if (!this.uiOpen && !document.pointerLockElement) {
                 canvas.requestPointerLock();
             }
         });
 
         document.addEventListener('pointerlockchange', () => {
             this.locked = !!document.pointerLockElement;
+            if (this.locked) {
+                document.body.classList.add('pointer-locked');
+            } else {
+                document.body.classList.remove('pointer-locked');
+            }
         });
 
         document.addEventListener('mousemove', (e) => {
-            if (!this.locked) return;
+            if (!this.locked || this.uiOpen) return;
             this.euler.y -= e.movementX * this.sensitivity;
             this.euler.x -= e.movementY * this.sensitivity;
             this.euler.x = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, this.euler.x));
             this.camera.quaternion.setFromEuler(this.euler);
         });
+    }
+
+    releasePointerLock() {
+        this.uiOpen = true;
+        document.body.classList.add('ui-open');
+        if (document.pointerLockElement) {
+            document.exitPointerLock();
+        }
+    }
+
+    reacquirePointerLock() {
+        this.uiOpen = false;
+        document.body.classList.remove('ui-open');
+        // Don't force re-lock; user clicks the canvas to re-lock
     }
 
     getDirection() {

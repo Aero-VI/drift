@@ -100,7 +100,7 @@ class Game {
             // NOW set up pointer lock (after loading screen is being dismissed)
             this.camera.lock(canvas);
 
-            // Request pointer lock on desktop (mobile will just work without it)
+            // Request pointer lock on desktop
             if (document.pointerLockElement === undefined) {
                 // Pointer lock not supported (mobile), that's fine
             } else {
@@ -141,6 +141,66 @@ class Game {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
+    isAnyUIOpen() {
+        return this.scanner.isOpen || this.galaxyMap.isOpen || this.journal.isOpen || this.stats.isOpen;
+    }
+
+    openUI(panel, ...args) {
+        this.camera.releasePointerLock();
+        if (panel === 'scanner') {
+            this.scanner.open(...args);
+        } else if (panel === 'galaxyMap') {
+            this.galaxyMap.open(...args);
+        } else if (panel === 'journal') {
+            this.journal.open();
+        } else if (panel === 'stats') {
+            this.stats.open();
+        }
+    }
+
+    closeUI(panel) {
+        if (panel === 'scanner') {
+            this.scanner.close();
+        } else if (panel === 'galaxyMap') {
+            this.galaxyMap.close();
+        } else if (panel === 'journal') {
+            this.journal.close();
+        } else if (panel === 'stats') {
+            this.stats.close();
+        }
+
+        // If ALL panels are now closed, re-enable pointer lock
+        if (!this.isAnyUIOpen()) {
+            this.camera.reacquirePointerLock();
+        }
+    }
+
+    closeAllUI() {
+        this.scanner.close();
+        this.galaxyMap.close();
+        this.journal.close();
+        this.stats.close();
+        this.camera.reacquirePointerLock();
+    }
+
+    toggleUI(panel, ...args) {
+        const isOpen = (panel === 'scanner') ? this.scanner.isOpen :
+                       (panel === 'galaxyMap') ? this.galaxyMap.isOpen :
+                       (panel === 'journal') ? this.journal.isOpen :
+                       (panel === 'stats') ? this.stats.isOpen : false;
+
+        if (isOpen) {
+            this.closeUI(panel);
+        } else {
+            // Close other panels first
+            if (panel !== 'scanner') this.scanner.close();
+            if (panel !== 'galaxyMap') this.galaxyMap.close();
+            if (panel !== 'journal') this.journal.close();
+            if (panel !== 'stats') this.stats.close();
+            this.openUI(panel, ...args);
+        }
+    }
+
     loop() {
         requestAnimationFrame(() => this.loop());
 
@@ -152,8 +212,15 @@ class Game {
             this.audioInitialized = true;
         }
 
-        // Update player
-        this.player.update(this.input, delta);
+        const uiOpen = this.isAnyUIOpen();
+
+        // Update player (skip movement input when UI is open)
+        if (!uiOpen) {
+            this.player.update(this.input, delta);
+        } else {
+            // Still update player physics (warping, momentum) but no new input
+            this.player.updatePhysics(delta);
+        }
         this.stats.update(this.player.position, this.player.speed);
 
         // Warp state transitions
@@ -207,60 +274,59 @@ class Game {
         this.hud.update(this.player, sector, nearestSystem);
         this.minimap.update(this.player.position, nearbySystems, this.camera.getDirection());
 
-        // Keys
+        // Keys (only process when not in UI, except Escape and panel toggles)
         if (this.input.wasPressed('KeyE')) {
             const scanResults = this.systemManager.scanNearby(this.player.position, 5000);
-            this.scanner.toggle(scanResults, this.player.position);
+            this.toggleUI('scanner', scanResults, this.player.position);
             this.audio.playScan();
         }
 
         if (this.input.wasPressed('Tab')) {
-            this.galaxyMap.toggle(this.player.position, this.systemManager);
+            this.toggleUI('galaxyMap', this.player.position, this.systemManager);
         }
 
         if (this.input.wasPressed('KeyJ')) {
-            this.journal.toggle();
+            this.toggleUI('journal');
         }
 
         if (this.input.wasPressed('KeyL')) {
-            this.stats.toggle();
+            this.toggleUI('stats');
         }
 
         if (this.input.wasPressed('Escape')) {
-            this.scanner.close();
-            this.galaxyMap.close();
-            this.journal.close();
-            this.stats.close();
+            this.closeAllUI();
             this.player.clearTarget();
         }
 
-        if (this.input.wasPressed('KeyF') && this.player.lockedTarget) {
-            const started = this.player.startWarp();
-            if (started) {
+        if (!uiOpen) {
+            if (this.input.wasPressed('KeyF') && this.player.lockedTarget) {
+                const started = this.player.startWarp();
+                if (started) {
+                    this.audio.playBoost();
+                } else if (this.player.fuel < 30) {
+                    this.notifications.show('INSUFFICIENT FUEL FOR WARP', 'warning', 2000);
+                }
+            }
+
+            if (this.input.wasPressed('KeyQ')) {
+                const nearest = this.systemManager.getNearestSystem(this.player.position, 3000);
+                if (nearest) {
+                    const [sx, sy, sz] = nearest.sectorKey.split(',').map(Number);
+                    const worldPos = new THREE.Vector3(
+                        sx * 2000 + nearest.system.position.x,
+                        sy * 2000 + nearest.system.position.y,
+                        sz * 2000 + nearest.system.position.z
+                    );
+                    this.player.lockTarget(nearest.system, worldPos);
+                    this.notifications.show(`LOCKED: ${nearest.system.name} (${Math.floor(nearest.distance)}u)`, 'info', 2000);
+                } else {
+                    this.notifications.show('NO SYSTEMS IN RANGE', 'warning', 2000);
+                }
+            }
+
+            if (this.player.boosting && this.input.wasPressed('ShiftLeft')) {
                 this.audio.playBoost();
-            } else if (this.player.fuel < 30) {
-                this.notifications.show('INSUFFICIENT FUEL FOR WARP', 'warning', 2000);
             }
-        }
-
-        if (this.input.wasPressed('KeyQ')) {
-            const nearest = this.systemManager.getNearestSystem(this.player.position, 3000);
-            if (nearest) {
-                const [sx, sy, sz] = nearest.sectorKey.split(',').map(Number);
-                const worldPos = new THREE.Vector3(
-                    sx * 2000 + nearest.system.position.x,
-                    sy * 2000 + nearest.system.position.y,
-                    sz * 2000 + nearest.system.position.z
-                );
-                this.player.lockTarget(nearest.system, worldPos);
-                this.notifications.show(`LOCKED: ${nearest.system.name} (${Math.floor(nearest.distance)}u)`, 'info', 2000);
-            } else {
-                this.notifications.show('NO SYSTEMS IN RANGE', 'warning', 2000);
-            }
-        }
-
-        if (this.player.boosting && this.input.wasPressed('ShiftLeft')) {
-            this.audio.playBoost();
         }
 
         this.renderer.updateEffects(this.time, this.player.warping ? 1.0 : 0.0);

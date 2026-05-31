@@ -9,7 +9,15 @@ body {
     background: #000;
     font-family: 'Courier New', monospace;
     color: #e0e0e0;
+    cursor: crosshair;
+}
+
+body.pointer-locked {
     cursor: none;
+}
+
+body.ui-open {
+    cursor: default !important;
 }
 
 #game-canvas {
@@ -34,6 +42,7 @@ body {
     align-items: center;
     justify-content: center;
     transition: opacity 1.5s ease;
+    cursor: pointer;
 }
 
 #loading-screen.fade-out {
@@ -266,6 +275,7 @@ body {
     padding: 20px;
     pointer-events: auto;
     overflow-y: auto;
+    cursor: default;
 }
 
 .panel-header {
@@ -371,6 +381,7 @@ body {
     border: 1px solid rgba(100, 180, 255, 0.3);
     padding: 20px;
     pointer-events: auto;
+    cursor: default;
 }
 
 #map-canvas {
