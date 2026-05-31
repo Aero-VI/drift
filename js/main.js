@@ -8,6 +8,7 @@ import { WarpTunnel } from './engine/warptunnel.js';
 import { Starfield } from './world/starfield.js';
 import { StarSystemManager } from './world/systems.js';
 import { Player } from './entities/player.js';
+import { EngineExhaust } from './entities/exhaust.js';
 import { HUD } from './ui/hud.js';
 import { Scanner } from './ui/scanner.js';
 import { Minimap } from './ui/minimap.js';
@@ -24,6 +25,7 @@ class Game {
         this.starfield = null;
         this.systemManager = null;
         this.player = null;
+        this.exhaust = null;
         this.hud = null;
         this.scanner = null;
         this.minimap = null;
@@ -38,7 +40,6 @@ class Game {
         this.time = 0;
         this.lastDiscoveryCheck = 0;
         this.audioInitialized = false;
-        this.fpsCounter = { frames: 0, lastTime: 0, fps: 0 };
 
         this.init();
     }
@@ -72,6 +73,7 @@ class Game {
             this.speedLines = new SpeedLines(this.renderer.scene);
             this.dustParticles = new DustParticles(this.renderer.scene);
             this.warpTunnel = new WarpTunnel(this.renderer.scene);
+            this.exhaust = new EngineExhaust(this.renderer.scene);
             await this.sleep(100);
 
             loadingStatus.textContent = 'Calibrating ship systems...';
@@ -134,14 +136,6 @@ class Game {
         const delta = Math.min(this.clock.getDelta(), 0.05);
         this.time += delta;
 
-        // FPS
-        this.fpsCounter.frames++;
-        if (this.time - this.fpsCounter.lastTime >= 1) {
-            this.fpsCounter.fps = this.fpsCounter.frames;
-            this.fpsCounter.frames = 0;
-            this.fpsCounter.lastTime = this.time;
-        }
-
         // Init audio on first input
         if (!this.audioInitialized && (this.input.isDown('KeyW') || this.input.mouseDown)) {
             this.audio.init();
@@ -159,6 +153,13 @@ class Game {
         this.speedLines.update(this.camera.camera, this.player.speed, this.player.boosting || this.player.warping, delta);
         this.dustParticles.update(this.player.position, this.time);
         this.warpTunnel.update(this.camera.camera, this.player.warping, this.time, delta);
+        this.exhaust.update(
+            this.player.position,
+            this.camera.getDirection(),
+            this.player.speed,
+            this.player.boosting,
+            delta
+        );
 
         // Update targeting
         this.targeting.update(this.camera.camera, this.player);
@@ -230,6 +231,7 @@ class Game {
             this.audio.playBoost();
         }
 
+        // Post-processing effects
         this.renderer.updateEffects(this.time, this.player.warping ? 1.0 : 0.0);
         this.renderer.render(this.camera.camera);
         this.input.endFrame();
