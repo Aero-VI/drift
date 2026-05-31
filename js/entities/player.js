@@ -9,6 +9,7 @@ export class Player {
         this.baseSpeed = 50;
         this.maxSpeed = 200;
         this.boostSpeed = 600;
+        this.warpSpeed = 5000;
         this.currentMaxSpeed = this.maxSpeed;
         this.acceleration = 80;
         this.deceleration = 30;
@@ -16,11 +17,13 @@ export class Player {
 
         this.fuel = 100;
         this.maxFuel = 100;
-        this.fuelRegenRate = 2; // per second
-        this.boostFuelCost = 15; // per second
+        this.fuelRegenRate = 2;
+        this.boostFuelCost = 15;
         this.shield = 100;
 
         this.boosting = false;
+        this.warping = false;
+        this.warpProgress = 0;
         this.speed = 0;
 
         this.lockedTarget = null;
@@ -28,6 +31,13 @@ export class Player {
     }
 
     update(input, delta) {
+        // Handle warping
+        if (this.warping && this.lockedPosition) {
+            this.updateWarp(delta);
+            this.speed = this.warpSpeed;
+            return;
+        }
+
         const forward = this.camera.getDirection();
         const right = this.camera.getRight();
         const up = this.camera.getUp();
@@ -67,8 +77,7 @@ export class Player {
             moveDir.normalize();
             this.velocity.lerp(moveDir.multiplyScalar(this.currentMaxSpeed), this.acceleration * delta / this.currentMaxSpeed);
         } else {
-            // Deceleration
-            this.velocity.multiplyScalar(1 - this.deceleration * delta / this.currentMaxSpeed);
+            this.velocity.multiplyScalar(1 - this.deceleration * delta / Math.max(this.currentMaxSpeed, 1));
             if (this.velocity.length() < 0.1) this.velocity.set(0, 0, 0);
         }
 
@@ -80,16 +89,43 @@ export class Player {
         // Move
         this.position.addScaledVector(this.velocity, delta);
         this.speed = this.velocity.length();
+    }
 
-        // Auto-pilot toward locked target
-        if (this.lockedPosition) {
-            const dir = this.lockedPosition.clone().sub(this.position);
-            const dist = dir.length();
-            if (dist < 20) {
-                this.lockedTarget = null;
-                this.lockedPosition = null;
-            }
+    startWarp() {
+        if (!this.lockedPosition || this.warping) return false;
+        const dist = this.position.distanceTo(this.lockedPosition);
+        if (dist < 50) return false; // Already there
+        if (this.fuel < 30) return false; // Not enough fuel
+
+        this.warping = true;
+        this.warpProgress = 0;
+        this.fuel -= 30;
+        return true;
+    }
+
+    updateWarp(delta) {
+        if (!this.lockedPosition) {
+            this.warping = false;
+            return;
         }
+
+        const dir = this.lockedPosition.clone().sub(this.position);
+        const dist = dir.length();
+
+        if (dist < 80) {
+            // Arrived
+            this.warping = false;
+            this.velocity.set(0, 0, 0);
+            this.speed = 0;
+            return;
+        }
+
+        // Move toward target at warp speed
+        dir.normalize();
+        const moveAmount = Math.min(this.warpSpeed * delta, dist - 50);
+        this.position.addScaledVector(dir, moveAmount);
+
+        this.warpProgress = 1 - (dist / this.position.distanceTo(this.lockedPosition));
     }
 
     lockTarget(system, worldPos) {
@@ -100,5 +136,6 @@ export class Player {
     clearTarget() {
         this.lockedTarget = null;
         this.lockedPosition = null;
+        this.warping = false;
     }
 }

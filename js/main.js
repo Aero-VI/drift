@@ -11,6 +11,7 @@ import { HUD } from './ui/hud.js';
 import { Scanner } from './ui/scanner.js';
 import { Minimap } from './ui/minimap.js';
 import { GalaxyMap } from './ui/galaxymap.js';
+import { TargetingSystem } from './ui/targeting.js';
 
 class Game {
     constructor() {
@@ -25,6 +26,7 @@ class Game {
         this.scanner = null;
         this.minimap = null;
         this.galaxyMap = null;
+        this.targeting = null;
         this.speedLines = null;
         this.dustParticles = null;
 
@@ -41,7 +43,6 @@ class Game {
         const loadingStatus = document.getElementById('loader-status');
 
         try {
-            // Phase 1: Engine
             loadingStatus.textContent = 'Initializing engine...';
             loadingBar.style.width = '10%';
 
@@ -50,60 +51,45 @@ class Game {
             this.camera = new GameCamera();
             this.input = new Input();
             this.audio = new AudioEngine();
+            await this.sleep(150);
 
-            await this.sleep(200);
-
-            // Phase 2: Stars
             loadingStatus.textContent = 'Generating starfield...';
             loadingBar.style.width = '25%';
-
             this.starfield = new Starfield(this.renderer.scene);
-            await this.sleep(200);
+            await this.sleep(150);
 
-            // Phase 3: Systems
             loadingStatus.textContent = 'Building star systems...';
             loadingBar.style.width = '45%';
-
             this.systemManager = new StarSystemManager(this.renderer.scene);
-            await this.sleep(200);
+            await this.sleep(150);
 
-            // Phase 4: Effects
             loadingStatus.textContent = 'Loading particle systems...';
             loadingBar.style.width = '55%';
-
             this.speedLines = new SpeedLines(this.renderer.scene);
             this.dustParticles = new DustParticles(this.renderer.scene);
             await this.sleep(100);
 
-            // Phase 5: Player
             loadingStatus.textContent = 'Calibrating ship systems...';
             loadingBar.style.width = '70%';
-
             this.player = new Player(this.camera);
             this.player.position.set(100, 50, 100);
-
             this.renderer.setupPostProcessing(this.camera.camera);
-            await this.sleep(200);
+            await this.sleep(150);
 
-            // Phase 6: UI
             loadingStatus.textContent = 'Loading interface...';
             loadingBar.style.width = '85%';
-
             this.hud = new HUD();
             this.scanner = new Scanner();
             this.minimap = new Minimap();
             this.galaxyMap = new GalaxyMap();
-
+            this.targeting = new TargetingSystem();
             this.setupInteractions();
-            await this.sleep(200);
+            await this.sleep(150);
 
-            // Phase 7: Ready
             loadingStatus.textContent = 'Ready. Click to enter.';
             loadingBar.style.width = '100%';
-
             this.camera.lock(canvas);
 
-            // Wait for click
             await new Promise(resolve => {
                 const handler = () => {
                     canvas.removeEventListener('click', handler);
@@ -112,14 +98,10 @@ class Game {
                 canvas.addEventListener('click', handler);
             });
 
-            // Fade out loading screen
             const loadingScreen = document.getElementById('loading-screen');
             loadingScreen.classList.add('fade-out');
-            setTimeout(() => {
-                loadingScreen.style.display = 'none';
-            }, 1500);
+            setTimeout(() => { loadingScreen.style.display = 'none'; }, 1500);
 
-            // Start
             this.loop();
 
         } catch (err) {
@@ -160,8 +142,11 @@ class Game {
         this.starfield.update(this.time);
 
         // Update effects
-        this.speedLines.update(this.camera.camera, this.player.speed, this.player.boosting, delta);
+        this.speedLines.update(this.camera.camera, this.player.speed, this.player.boosting || this.player.warping, delta);
         this.dustParticles.update(this.player.position, this.time);
+
+        // Update targeting
+        this.targeting.update(this.camera.camera, this.player);
 
         // Discovery check (every 0.5s)
         if (this.time - this.lastDiscoveryCheck > 0.5) {
@@ -177,17 +162,13 @@ class Game {
             }
         }
 
-        // Get scan data for minimap
+        // Scan data
         const nearbySystems = this.systemManager.scanNearby(this.player.position, 5000);
         const nearestSystem = this.systemManager.getNearestSystem(this.player.position);
 
         // UI updates
         this.hud.update(this.player, sector, nearestSystem);
-        this.minimap.update(
-            this.player.position,
-            nearbySystems,
-            this.camera.getDirection()
-        );
+        this.minimap.update(this.player.position, nearbySystems, this.camera.getDirection());
 
         // Key actions
         if (this.input.wasPressed('KeyE')) {
@@ -203,6 +184,30 @@ class Game {
         if (this.input.wasPressed('Escape')) {
             this.scanner.close();
             this.galaxyMap.close();
+            this.player.clearTarget();
+        }
+
+        // Warp to target
+        if (this.input.wasPressed('KeyF') && this.player.lockedTarget) {
+            const started = this.player.startWarp();
+            if (started) {
+                this.audio.playBoost();
+            }
+        }
+
+        // Click to lock nearest system in view
+        if (this.input.wasPressed('KeyQ')) {
+            // Lock nearest visible system
+            const nearest = this.systemManager.getNearestSystem(this.player.position, 3000);
+            if (nearest) {
+                const [sx, sy, sz] = nearest.sectorKey.split(',').map(Number);
+                const worldPos = new THREE.Vector3(
+                    sx * 2000 + nearest.system.position.x,
+                    sy * 2000 + nearest.system.position.y,
+                    sz * 2000 + nearest.system.position.z
+                );
+                this.player.lockTarget(nearest.system, worldPos);
+            }
         }
 
         if (this.player.boosting && this.input.wasPressed('ShiftLeft')) {
@@ -211,8 +216,6 @@ class Game {
 
         // Render
         this.renderer.render(this.camera.camera);
-
-        // End frame
         this.input.endFrame();
     }
 }
