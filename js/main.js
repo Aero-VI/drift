@@ -4,6 +4,7 @@ import { GameCamera } from './engine/camera.js';
 import { Input } from './engine/input.js';
 import { AudioEngine } from './engine/audio.js';
 import { SpeedLines, DustParticles } from './engine/effects.js';
+import { WarpTunnel } from './engine/warptunnel.js';
 import { Starfield } from './world/starfield.js';
 import { StarSystemManager } from './world/systems.js';
 import { Player } from './entities/player.js';
@@ -31,11 +32,13 @@ class Game {
         this.journal = null;
         this.speedLines = null;
         this.dustParticles = null;
+        this.warpTunnel = null;
 
         this.clock = new THREE.Clock();
         this.time = 0;
         this.lastDiscoveryCheck = 0;
         this.audioInitialized = false;
+        this.fpsCounter = { frames: 0, lastTime: 0, fps: 0 };
 
         this.init();
     }
@@ -64,10 +67,11 @@ class Game {
             this.systemManager = new StarSystemManager(this.renderer.scene);
             await this.sleep(150);
 
-            loadingStatus.textContent = 'Loading particle systems...';
+            loadingStatus.textContent = 'Loading effects...';
             loadingBar.style.width = '55%';
             this.speedLines = new SpeedLines(this.renderer.scene);
             this.dustParticles = new DustParticles(this.renderer.scene);
+            this.warpTunnel = new WarpTunnel(this.renderer.scene);
             await this.sleep(100);
 
             loadingStatus.textContent = 'Calibrating ship systems...';
@@ -130,19 +134,33 @@ class Game {
         const delta = Math.min(this.clock.getDelta(), 0.05);
         this.time += delta;
 
+        // FPS
+        this.fpsCounter.frames++;
+        if (this.time - this.fpsCounter.lastTime >= 1) {
+            this.fpsCounter.fps = this.fpsCounter.frames;
+            this.fpsCounter.frames = 0;
+            this.fpsCounter.lastTime = this.time;
+        }
+
+        // Init audio on first input
         if (!this.audioInitialized && (this.input.isDown('KeyW') || this.input.mouseDown)) {
             this.audio.init();
             this.audioInitialized = true;
         }
 
+        // Update player
         this.player.update(this.input, delta);
 
+        // Update world
         const sector = this.systemManager.update(this.player.position, this.time);
         this.starfield.update(this.time);
 
+        // Update effects
         this.speedLines.update(this.camera.camera, this.player.speed, this.player.boosting || this.player.warping, delta);
         this.dustParticles.update(this.player.position, this.time);
+        this.warpTunnel.update(this.camera.camera, this.player.warping, this.time, delta);
 
+        // Update targeting
         this.targeting.update(this.camera.camera, this.player);
 
         // Discovery check
