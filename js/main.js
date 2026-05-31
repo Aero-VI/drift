@@ -15,32 +15,16 @@ import { Minimap } from './ui/minimap.js';
 import { GalaxyMap } from './ui/galaxymap.js';
 import { TargetingSystem } from './ui/targeting.js';
 import { Journal } from './ui/journal.js';
+import { NotificationSystem } from './ui/notifications.js';
+import { StatsTracker } from './ui/stats.js';
 
 class Game {
     constructor() {
-        this.renderer = null;
-        this.camera = null;
-        this.input = null;
-        this.audio = null;
-        this.starfield = null;
-        this.systemManager = null;
-        this.player = null;
-        this.exhaust = null;
-        this.hud = null;
-        this.scanner = null;
-        this.minimap = null;
-        this.galaxyMap = null;
-        this.targeting = null;
-        this.journal = null;
-        this.speedLines = null;
-        this.dustParticles = null;
-        this.warpTunnel = null;
-
         this.clock = new THREE.Clock();
         this.time = 0;
         this.lastDiscoveryCheck = 0;
         this.audioInitialized = false;
-
+        this.wasWarping = false;
         this.init();
     }
 
@@ -91,6 +75,8 @@ class Game {
             this.galaxyMap = new GalaxyMap();
             this.targeting = new TargetingSystem();
             this.journal = new Journal();
+            this.notifications = new NotificationSystem();
+            this.stats = new StatsTracker();
             this.setupInteractions();
             await this.sleep(150);
 
@@ -110,6 +96,11 @@ class Game {
             loadingScreen.classList.add('fade-out');
             setTimeout(() => { loadingScreen.style.display = 'none'; }, 1500);
 
+            this.notifications.show('SYSTEMS ONLINE', 'success', 2000);
+            setTimeout(() => {
+                this.notifications.show('Press E to scan nearby systems', 'info', 4000);
+            }, 2500);
+
             this.loop();
 
         } catch (err) {
@@ -123,6 +114,7 @@ class Game {
     setupInteractions() {
         this.scanner.onSelect = (result) => {
             this.player.lockTarget(result.system, result.worldPos);
+            this.notifications.show(`TARGET: ${result.system.name}`, 'info', 2000);
         };
     }
 
@@ -136,7 +128,6 @@ class Game {
         const delta = Math.min(this.clock.getDelta(), 0.05);
         this.time += delta;
 
-        // Init audio on first input
         if (!this.audioInitialized && (this.input.isDown('KeyW') || this.input.mouseDown)) {
             this.audio.init();
             this.audioInitialized = true;
@@ -144,6 +135,17 @@ class Game {
 
         // Update player
         this.player.update(this.input, delta);
+        this.stats.update(this.player.position, this.player.speed);
+
+        // Warp state transitions
+        if (this.player.warping && !this.wasWarping) {
+            this.notifications.show('WARP DRIVE ENGAGED', 'success', 2000);
+        }
+        if (!this.player.warping && this.wasWarping) {
+            this.notifications.show('WARP COMPLETE', 'success', 2000);
+            this.stats.addWarp();
+        }
+        this.wasWarping = this.player.warping;
 
         // Update world
         const sector = this.systemManager.update(this.player.position, this.time);
@@ -161,10 +163,10 @@ class Game {
             delta
         );
 
-        // Update targeting
+        // Targeting
         this.targeting.update(this.camera.camera, this.player);
 
-        // Discovery check
+        // Discovery
         if (this.time - this.lastDiscoveryCheck > 0.5) {
             this.lastDiscoveryCheck = this.time;
             const nearest = this.systemManager.getNearestSystem(this.player.position, 100);
@@ -175,6 +177,7 @@ class Game {
                     this.hud.showDiscovery(nearest.system.name);
                     this.audio.playDiscovery();
                     this.journal.addEntry(nearest.system);
+                    this.stats.addDiscovery();
                 }
             }
         }
@@ -185,7 +188,7 @@ class Game {
         this.hud.update(this.player, sector, nearestSystem);
         this.minimap.update(this.player.position, nearbySystems, this.camera.getDirection());
 
-        // Key actions
+        // Keys
         if (this.input.wasPressed('KeyE')) {
             const scanResults = this.systemManager.scanNearby(this.player.position, 5000);
             this.scanner.toggle(scanResults, this.player.position);
@@ -200,10 +203,15 @@ class Game {
             this.journal.toggle();
         }
 
+        if (this.input.wasPressed('KeyL')) {
+            this.stats.toggle();
+        }
+
         if (this.input.wasPressed('Escape')) {
             this.scanner.close();
             this.galaxyMap.close();
             this.journal.close();
+            this.stats.close();
             this.player.clearTarget();
         }
 
@@ -211,6 +219,8 @@ class Game {
             const started = this.player.startWarp();
             if (started) {
                 this.audio.playBoost();
+            } else if (this.player.fuel < 30) {
+                this.notifications.show('INSUFFICIENT FUEL FOR WARP', 'warning', 2000);
             }
         }
 
@@ -224,6 +234,9 @@ class Game {
                     sz * 2000 + nearest.system.position.z
                 );
                 this.player.lockTarget(nearest.system, worldPos);
+                this.notifications.show(`LOCKED: ${nearest.system.name} (${Math.floor(nearest.distance)}u)`, 'info', 2000);
+            } else {
+                this.notifications.show('NO SYSTEMS IN RANGE', 'warning', 2000);
             }
         }
 
@@ -231,7 +244,6 @@ class Game {
             this.audio.playBoost();
         }
 
-        // Post-processing effects
         this.renderer.updateEffects(this.time, this.player.warping ? 1.0 : 0.0);
         this.renderer.render(this.camera.camera);
         this.input.endFrame();
